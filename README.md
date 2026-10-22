@@ -17,73 +17,81 @@ Each FK label is built from many simulated SDE paths, but every path is reduced 
   <img src="figures/presentations/nb00_architecture.png" alt="Training loss: PINN residual, FK supervision and a signature-based term" width="95%">
 </p>
 
-*The training loss. Top: the standard PINN residual, computed by automatic differentiation. Middle: FK supervision, which regresses $u_\theta$ onto a Monte Carlo average over SDE paths. Bottom: the question this project works on, which is how to combine the signatures $S(\hat X)$ of the same paths with $u_\theta$ to form a further loss term.*
+**Figure 1.** The training loss. Top: the standard PINN residual, computed by automatic differentiation. Middle: FK supervision, which regresses $`u_\theta`$ onto a Monte Carlo average over SDE paths. Bottom: the question this project works on, which is how to combine the signatures $`S(\hat X)`$ of the same paths with $`u_\theta`$ to form a further loss term.
 
 ## Feynman–Kac supervision
 
-When a linear PDE's operator $\mathcal{L}$ is the generator of an SDE $dX_s = b(X_s)\thinspace ds + \sigma(X_s)\thinspace dW_s$, the Feynman–Kac formula writes the solution at a point as an expectation over paths started from that point. Without killing or source terms,
+When a linear PDE's operator $`\mathcal{L}`$ is the generator of an SDE $`dX_s = b(X_s)\thinspace ds + \sigma(X_s)\thinspace dW_s`$, the Feynman–Kac formula writes the solution at a point as an expectation over paths started from that point. Without killing or source terms,
 
-$$
+```math
 u(t,x) = \mathbb{E}\big[g(X_\tau) \mid X_t = x\big], \qquad \tau = \inf\lbrace s \ge t : X_s \notin \Omega\rbrace \wedge T .
-$$
+```
 
-With a potential $V$ or a source $f$, the same formula holds with an added discount factor and running cost, as in the figure below. An FK label at $x$ is the Monte Carlo average of this functional over $M$ Euler–Maruyama paths.
+With a potential $`V`$ or a source $`f`$, the same formula holds with an added discount factor and running cost, as in the figure below. An FK label at $`x`$ is the Monte Carlo average of this functional over $`M`$ Euler–Maruyama paths.
 
 <p align="center">
   <img src="figures/presentations/nb00_fk_funnel.png" alt="64 paths reduced to 64 path scores and then to one FK label" width="90%">
 </p>
 
-*How an FK label is formed. 64 paths of 33 steps in 2D (4,224 numbers) are each scored by the FK functional, giving 64 numbers. These are averaged into one label $\bar u$. Ordinary FK supervision keeps only this last number.*
+**Figure 2.** How an FK label is formed. 64 paths of 33 steps in 2D (4,224 numbers) are each scored by the FK functional, giving 64 numbers. These are averaged into one label $`\bar u`$. Ordinary FK supervision keeps only this last number.
 
 Related methods also train on stochastic representations of the PDE. Deep BSDE (Han, Jentzen & E, 2018) recasts parabolic PDEs as backward SDEs. The derivative-free loss method uses FK walkers inside the loss, and Han & Lee (2026) analyse its bias and trainability.
 
 ## Current approach: Signature-Hierarchy FK-PINNs
 
-The lowest-degree term is ordinary FK supervision. Higher-degree terms add FK information carried by the path signature of each simulated path, truncated at a chosen depth $N$.
+The lowest-degree term is ordinary FK supervision. Higher-degree terms add FK information carried by the path signature of each simulated path, truncated at a chosen depth $`N`$.
 
 The PINN loss becomes
 
-$$
+```math
 \mathcal{L}(\theta) = \frac{1}{n_r}\sum_{i}\big|(\partial_t+\mathcal{L})u_\theta(\mathbf{z}_i)\big|^2 + \frac{1}{n_b}\sum_{j}\big|u_\theta(\mathbf{z}_j)-g(\mathbf{z}_j)\big|^2 + \frac{1}{n}\sum_{i}\sum_{w\in W_N}\lambda_w\big(\hat u_w(\mathbf{z}_i;\theta)-Y_{w,i}\big)^2
-$$
+```
 
-Inside the residual, $\mathcal{L}$ is the SDE generator. The first two terms are the classical PINN residual and boundary terms, on collocation points $\mathbf{z}_i$ and boundary points $\mathbf{z}_j\in\partial\Omega$. The last term is the FK supervision loss. Its inner sum runs over words $w\in W_N$ of length at most $N$ in the letters $\lbrace 0,1,\dots,d\rbrace$, where letter $0$ is time and letters $1,\dots,d$ are the Brownian coordinates. Each word has a weight $\lambda_w \ge 0$. The empty word $w=\emptyset$ recovers ordinary FK supervision, with $\hat u_\emptyset=u_\theta$. The target is
+Inside the residual, $`\mathcal{L}`$ is the SDE generator. The first two terms are the classical PINN residual and boundary terms, on collocation points $`\mathbf{z}_i`$ and boundary points $`\mathbf{z}_j\in\partial\Omega`$. The last term is the FK supervision loss. Its inner sum runs over words $`w\in W_N`$ of length at most $`N`$ in the letters $`\lbrace 0,1,\dots,d\rbrace`$, where letter $`0`$ is time and letters $`1,\dots,d`$ are the Brownian coordinates. Each word has a weight $`\lambda_w \ge 0`$. The empty word $`w=\emptyset`$ recovers ordinary FK supervision, with $`\hat u_\emptyset=u_\theta`$. The target is
 
-$$
+```math
 Y_{w,i}=\frac{1}{M}\sum_{m=1}^{M}\left\langle e_w,\thickspace\check S^{(m)}_{t_i,\tau_i^{(m)}}\right\rangle\thinspace g\big(X^{(m)}_{\tau_i^{(m)}}\big), \qquad \tau_i^{(m)}=\inf\lbrace s\ge t_i: X^{(m)}_s\notin\Omega\rbrace\wedge T
-$$
+```
 
-where $\check S$ is the Itô signature of the time-augmented driver $(s,W_s)$. It is accumulated along each Euler–Maruyama path by the left-point recursion $S_w\leftarrow S_w+S_{w^{-}}\Delta\widehat W^{a}_k$, with $w=w^{-}a$, updating the longest words first.
+where $`\check S`$ is the Itô signature of the time-augmented driver $`(s,W_s)`$. It is accumulated along each Euler–Maruyama path by the left-point recursion $`S_w\leftarrow S_w+S_{w^{-}}\Delta\widehat W^{a}_k`$, with $`w=w^{-}a`$, updating the longest words first.
 
-The prediction $\hat u_w(\mathbf{z}_i;\theta)$ comes from the network. Each construction below adds a PSD term $\lambda_w J_w^\top J_w$, with $J_w=\partial_\theta\hat u_w$, to the Gauss–Newton matrix. The constructions differ in which parameters that curvature acts on.
+The prediction $`\hat u_w(\mathbf{z}_i;\theta)`$ comes from the network. Each construction below adds a PSD term $`\lambda_w J_w^\top J_w`$, with $`J_w=\partial_\theta\hat u_w`$, to the Gauss–Newton matrix. The constructions differ in which parameters that curvature acts on.
 
-- **Signature heads.** Split the network into a trunk $h_\psi(\mathbf{z})\in\mathbb{R}^q$ and linear heads, and set $\hat u_w=c_w^\top h_\psi(\mathbf{z})$, with $u_\theta=c_\emptyset^\top h_\psi$. Then $J_w$ is supported on $(\psi,c_w)$ and $\partial\hat u_w/\partial c_\emptyset=0$. The added curvature therefore acts only on the trunk, and the 0th-order head $c_\emptyset$ receives none. The cost is negligible, but nothing forces $\hat u_w$ to be consistent with $u_\theta$.
+### Signature heads
 
-- **Tied, pointwise.** Express $\hat u_w$ as a differential operator applied to $u_\theta$ at the same point. With $\tau=T-t$, $D_a=(\sigma^\top\nabla)_a$ for $a\ge1$, $D_0=\mathrm{id}$ and $n=|w|$:
+Split the network into a trunk $`h_\psi(\mathbf{z})\in\mathbb{R}^q`$ and linear heads, and set $`\hat u_w=c_w^\top h_\psi(\mathbf{z})`$, with $`u_\theta=c_\emptyset^\top h_\psi`$. Then $`J_w`$ is supported on $`(\psi,c_w)`$ and $`\partial\hat u_w/\partial c_\emptyset=0`$. The added curvature therefore acts only on the trunk, and the 0th-order head $`c_\emptyset`$ receives none. The cost is negligible, but nothing forces $`\hat u_w`$ to be consistent with $`u_\theta`$.
 
-  $$
-  \hat u_w(\mathbf{z};\theta)=\frac{\tau^{n}}{n!}\thinspace D_{a_1}\cdots D_{a_n}u_\theta(\mathbf{z}), \qquad w=a_1\cdots a_n
-  $$
+### Tied, pointwise
 
-  The identity is exact if and only if $D_a u(s,X_s)$ is a martingale, i.e. $[\mathcal{L},D_a]=0$. This holds for constant coefficients and, after a change of variables, for commuting vector fields (for example geometric Brownian motion in log coordinates). Affine SDEs admit the same pointwise form with matrix weights in place of $\tau^n/n!$. The cost is one autodiff call at $\mathbf{z}_i$. The added curvature $\lambda_w\nabla_\theta(D_wu_\theta)\nabla_\theta(D_wu_\theta)^\top$ acts on all parameters of $u_\theta$, through derivative features.
+Express $`\hat u_w`$ as a differential operator applied to $`u_\theta`$ at the same point. With $`\tau=T-t`$, $`D_a=(\sigma^\top\nabla)_a`$ for $`a\ge1`$, $`D_0=\mathrm{id}`$ and $`n=|w|`$:
 
-- **Tied, path-integrated.** For general $b,\sigma$ no pointwise identity exists. At level one, $u_a(t,x)=\mathbb{E}\big[\int_t^{\tau}(\sigma^\top\nabla u)_a(s,X_s)\thinspace ds\big]$, so $\hat u_a$ is estimated on a stored path set $\lbrace X'^{(m)}\rbrace$ that is independent of the one behind $Y$:
+```math
+\hat u_w(\mathbf{z};\theta)=\frac{\tau^{n}}{n!}\thinspace D_{a_1}\cdots D_{a_n}u_\theta(\mathbf{z}), \qquad w=a_1\cdots a_n
+```
 
-  $$
-  \hat u_a(\mathbf{z}_i;\theta)=\frac{1}{M'}\sum_{m=1}^{M'}\sum_{k}\big(\sigma^\top\nabla u_\theta\big)_a\big(s_k,X'^{(m)}_{s_k}\big)\thinspace\Delta s_k
-  $$
+The identity is exact if and only if $`D_a u(s,X_s)`$ is a martingale, i.e. $`[\mathcal{L},D_a]=0`$. This holds for constant coefficients and, after a change of variables, for commuting vector fields (for example geometric Brownian motion in log coordinates). Affine SDEs admit the same pointwise form with matrix weights in place of $`\tau^n/n!`$. The cost is one autodiff call at $`\mathbf{z}_i`$. The added curvature $`\lambda_w\nabla_\theta(D_wu_\theta)\nabla_\theta(D_wu_\theta)^\top`$ acts on all parameters of $`u_\theta`$, through derivative features.
 
-  This needs $M'K$ network-gradient evaluations per point and storage $n\times M'\times K\times d$. Because $\mathrm{Var}(\hat u_a)$ depends on $\theta$, the minimiser is biased by $O(1/M')$ (double sampling). Levels $\ge 2$ require nested estimators. The added curvature acts on all parameters of $u_\theta$, through gradient features evaluated along the path.
+### Tied, path-integrated
 
-| Construction | Ties $\hat u_w$ to $u_\theta$ | Added curvature acts on | Cost per point |
+For general $`b,\sigma`$ no pointwise identity exists. At level one, $`u_a(t,x)=\mathbb{E}\big[\int_t^{\tau}(\sigma^\top\nabla u)_a(s,X_s)\thinspace ds\big]`$, so $`\hat u_a`$ is estimated on a stored path set $`\lbrace X'^{(m)}\rbrace`$ that is independent of the one behind $`Y`$:
+
+```math
+\hat u_a(\mathbf{z}_i;\theta)=\frac{1}{M'}\sum_{m=1}^{M'}\sum_{k}\big(\sigma^\top\nabla u_\theta\big)_a\big(s_k,X'^{(m)}_{s_k}\big)\thinspace\Delta s_k
+```
+
+This needs $`M'K`$ network-gradient evaluations per point and storage $`n\times M'\times K\times d`$. Because $`\mathrm{Var}(\hat u_a)`$ depends on $`\theta`$, the minimiser is biased by $`O(1/M')`$ (double sampling). Levels $`\ge 2`$ require nested estimators. The added curvature acts on all parameters of $`u_\theta`$, through gradient features evaluated along the path.
+
+### Comparison
+
+| Construction | Ties $`\hat u_w`$ to $`u_\theta`$ | Added curvature acts on | Cost per point |
 |---|---|---|---|
-| Signature heads | No | Trunk $\psi$ and head $c_w$ only | Negligible |
-| Tied, pointwise | Yes, exact iff $[\mathcal{L},D_a]=0$ | All parameters, via derivative features | One autodiff call |
-| Tied, path-integrated | Yes, for general $b,\sigma$ (level 1) | All parameters, via gradient features along paths | $M'K$ gradient evaluations, $O(1/M')$ bias |
+| Signature heads | No | Trunk $`\psi`$ and head $`c_w`$ only | Negligible |
+| Tied, pointwise | Yes, exact iff $`[\mathcal{L},D_a]=0`$ | All parameters, via derivative features | One autodiff call |
+| Tied, path-integrated | Yes, for general $`b,\sigma`$ (level 1) | All parameters, via gradient features along paths | $`M'K`$ gradient evaluations, $`O(1/M')`$ bias |
 
 ## Also under investigation: signature control variates
 
-The FK label is a Monte Carlo average, so its noise limits how much FK supervision can help. Some coordinates of the driver's Itô signature have expectations known in closed form. For example, a word ending in a Brownian letter gives a stopped Itô integral, which has mean zero because $\tau \le T$. These coordinates come for free with the paths already simulated and can be correlated with the path payoff, which makes them candidate control variates: they could reduce the variance of the FK label without simulating more paths. How much variance they remove, and how they interact with the signature-hierarchy loss, is being studied.
+The FK label is a Monte Carlo average, so its noise limits how much FK supervision can help. Some coordinates of the driver's Itô signature have expectations known in closed form. For example, a word ending in a Brownian letter gives a stopped Itô integral, which has mean zero because $`\tau \le T`$. These coordinates come for free with the paths already simulated and can be correlated with the path payoff, which makes them candidate control variates: they could reduce the variance of the FK label without simulating more paths. How much variance they remove, and how they interact with the signature-hierarchy loss, is being studied.
 
 ## Status
 
