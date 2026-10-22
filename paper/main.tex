@@ -1,0 +1,55 @@
+% Stochastic PINNs: Feynman-Kac paths and path signatures.
+% Target venues: Journal of Computational Physics, CMAME.
+%
+% This file exists from week one ON PURPOSE. Before running an experiment, write
+% the sentence it is meant to support and the caption of the figure that will
+% show it. If neither can be written, the experiment is not yet worth running.
+%
+% Build:  latexmk -pdf main.tex
+
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{subcaption}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[colorlinks=true,allcolors=blue]{hyperref}
+\usepackage{cleveref}
+
+% figures/ is a symlink (or copy) of ../outputs/figures -- never hand-edited
+\graphicspath{{figures/}}
+
+\newcommand{\pinn}{PINN}
+\newcommand{\fkpinn}{FK-PINN}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\dd}{\mathrm{d}}
+
+\title{Stochastic Physics-Informed Neural Networks:\\
+       Feynman--Kac Path Signatures for High-Dimensional PDEs}
+\author{Federico Ganzer\\ \small Department of Engineering, University of Cambridge}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+% Write this LAST, but draft a placeholder now so the claim stays visible.
+% One sentence each: problem, gap, method, headline number, implication.
+\input{sections/00_abstract}
+\end{abstract}
+
+\input{sections/01_introduction}
+\input{sections/02_background}
+\input{sections/03_method}
+\input{sections/04_experiments}
+\input{sections/05_results}
+\input{sections/06_discussion}
+\input{sections/07_conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}
