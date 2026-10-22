@@ -50,7 +50,7 @@ The PINN loss becomes
 Inside the residual, $`\mathcal{L}`$ is the SDE generator. The first two terms are the classical PINN residual and boundary terms, on collocation points $`\mathbf{z}_i`$ and boundary points $`\mathbf{z}_j\in\partial\Omega`$. The last term is the FK supervision loss. Its inner sum runs over words $`w\in W_N`$ of length at most $`N`$ in the letters $`\lbrace 0,1,\dots,d\rbrace`$, where letter $`0`$ is time and letters $`1,\dots,d`$ are the Brownian coordinates. Each word has a weight $`\lambda_w \ge 0`$. The empty word $`w=\emptyset`$ recovers ordinary FK supervision, with $`\hat u_\emptyset=u_\theta`$. The target is
 
 ```math
-Y_{w,i}=\frac{1}{M}\sum_{m=1}^{M}\left\langle e_w,\thickspace\check S^{(m)}_{t_i,\tau_i^{(m)}}\right\rangle\thinspace g\big(X^{(m)}_{\tau_i^{(m)}}\big), \qquad \tau_i^{(m)}=\inf\lbrace s\ge t_i: X^{(m)}_s\notin\Omega\rbrace\wedge T
+Y_{w,i}=\frac{1}{M}\sum_{m=1}^{M}\left\langle e_w, \check S^{(m)}_{t_i,\tau_i^{(m)}}\right\rangle\thinspace g\big(X^{(m)}_{\tau_i^{(m)}}\big), \qquad \tau_i^{(m)}=\inf\lbrace s\ge t_i: X^{(m)}_s\notin\Omega\rbrace\wedge T
 ```
 
 where $`\check S`$ is the Itô signature of the time-augmented driver $`(s,W_s)`$. It is accumulated along each Euler–Maruyama path by the left-point recursion $`S_w\leftarrow S_w+S_{w^{-}}\Delta\widehat W^{a}_k`$, with $`w=w^{-}a`$, updating the longest words first.
