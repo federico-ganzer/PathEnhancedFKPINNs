@@ -15,4 +15,6 @@
 %    summary of each path, plus the variance-reduction machinery to isolate that effect.
 % 5. Contributions, as a bulleted list, each one pointing at a specific figure or table.
 
-Placeholder.
+In science and engineering, many quantities of practical interest are governed by partial differential equations (PDEs). Chloride ingress in reinforced concrete, groundwater seepage and heat transport in building elements are all diffusion-type processes, and accurate models of them inform engineering design. The coefficients and loads in these models are rarely known exactly and treating them as uncertain adds a dimension per parameter. Mesh-based finite element methods are accurate and well understood in low dimensions but their cost grows exponentially with dimension and they quickly become impractical. Neural networks offer a mesh-free alternative with high expressivity.
+
+Physics-informed Neural Networks (PINNs) are variants of classical neural networks specifically developed to enforce physical constraints on neural networks whether through incorporating loss terms, restricting the optimization space to a physically feasible manifold, or one that respects symmetries etc. PINNs harness the universal approximation property whilst cutting down on the amount of data needed to achieve a satisfactory solution without distancing ourselves from physical feasibility and interpretability. 
