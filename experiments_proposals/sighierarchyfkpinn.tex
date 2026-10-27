@@ -108,29 +108,67 @@ If $w_N$ grows faster than $g$ decays, $g\,w_N$ turns upward and large $N$ worse
   \item \emph{Network-side cost.} The model coefficients need derivatives of $u_\theta$ along every simulated path, contracted with the tangent flow when the drift is non-trivial. Nested reverse-mode autograd is exponential in the order, so use forward- or Taylor-mode differentiation \cite{bettencourt2019taylor}. Expect roughly $2$--$4\times$ the per-step cost of plain FK at $N=2$.
   \item \emph{Bias.} Derivative labels near $\partial\Omega$ inherit, and likely amplify, the $O(\sqrt{\Delta t})$ exit-overshoot bias. On Euler paths the martingale identity, and with it the noise cancellation, holds only approximately. Report per-level bias against distance to the boundary.
 \end{itemize}
-
+\newpage
 \section{Experiments}
+\subsection{Hypotheses}
+\begin{enumerate}[label=\textbf{H\arabic*}, ref=H\arabic*, leftmargin=*]
+  \item\label{h:cond} \textbf{Path supervision conditions training.} With noise-free targets, adding $R_\mathrm{sig}$ to the FK loss lower $\kappa(K\mathcal M)$ and the error at matched steps. The gain grows wi $w_N(\lambda_{\max})$, that is with the roughness of $u$, the horizon $t$ and  the level $N$, until $g\,w_N$ turns upward. \emph{Test:} D against A$^*$, swept over frequency, $t$ and $N$. \emph{Falsifier:} D $\approx$ A$^*$ at th highest frequency, or a measured $\kappa$ ratio that does not grow with $w_N(\lambda_{\max})$.
+  \item\label{h:weights} \textbf{Parseval weights.} The Parseval weights match the best per-level weights found by tuning. \emph{Test:} D against D$'$ at equal tuning budget. \emph{Falsifier:} D$'$ beats D beyond seed noise. The weights then save tuning but carry no further benefit.
+  \item\label{h:noise} \textbf{Monte Carlo targets keep the gain.} Estimated on the same paths as $Y^\theta$, Monte Carlo targets retain most of the noise-free gain. \emph{Test:} B against D, and B against B$_{\mathrm{off}}$. \emph{Falsifier:} B $\approx$ A0. A gap B $>$ B$_{\mathrm{off}}$ confirms that the same-path cancellation removes the label noise.
+  \item\label{h:estimator} \textbf{Signature-specific value.} The signature estimator beats estimators that supply the same information without signatures. \emph{Test:} B against C (pathwise derivatives) and against F (the untruncated path residual). \emph{Falsifier:} B $\approx$ C and B $\le$ F on every benchmark. The contribution is then the preconditioner interpretation and its weights, not the signature estimator.
+\end{enumerate}
+\noindent Arm E is the control for all four. If E $\approx$ B, the gain comes
+from regularisation rather than information.
 
 \subsection{Arms}
- 
-\centering
+
+\begin{center}
 \small
 \renewcommand{\arraystretch}{1.15}
-\begin{tabularx}{\textwidth}{@{}l >{\raggedright\arraybackslash}p{4.3cm} >{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}X@{}}
+\begin{tabularx}{\textwidth}{@{}l >{\raggedright\arraybackslash}p{3.5cm} >{\raggedright\arraybackslash}p{4.6cm} >{\raggedright\arraybackslash}X@{}}
 \toprule
-Arm & Labels & Weights & Why this arm \\
+Arm & Added loss term & Targets & Tests \\
 \midrule
-P & none (residual + BC only) & --- & Standard PINN. Context and comparability with Table~1 of \cite{tepakbong2026taming}. \\
-A0 & MC point labels & --- & FK-PINN baseline as published. \\
-A$^*$ & exact point labels & --- & Noise-free baseline. Separates label noise from conditioning. \\
-D & exact jets, $N\in\{1,2,3\}$ & Parseval & Pure conditioning effect of derivative supervision. Gate for everything else (H\ref{h:jets}). \\
-D$'$ & exact jets & tuned constant $\lambda_n$ & Canonical vs tuned weights (H\ref{h:weights}). Tuning budget equal to the total compute of arm B. \\
-B & MC hierarchy / Malliavin weights & Parseval & Method under test. \\
-C & MC pathwise jets $\nabla^n u_0(X_t)$, times the flow Jacobian & Parseval & Same derivatives from a non-signature estimator (H\ref{h:estimator}). \\
-E & B with labels permuted across $x$ within $t$-bins & Parseval & Rules out a generic regularisation effect of the extra loss terms. \\
+P & none (residual + BC only) & --- & Context: Table~1 of \cite{tepakbong2026taming}. \\
+A0 & FK point loss & MC point labels & Published baseline. \\
+A$^*$ & FK point loss & exact point labels & Reference for \ref{h:cond}. \\
+D & $R_\mathrm{sig}$, $N\in\{1,2,3\}$ & exact derivatives (heat, OU); large-$M$ reference otherwise & \ref{h:cond}. Gate for the rest. \\
+D$'$ & derivative loss, tuned $\lambda_n$ & exact derivatives & \ref{h:weights}. \\
+B & $R_\mathrm{sig}$ & MC, from $Y^\theta - Y$ on the same paths & Method under test. \ref{h:noise}, \ref{h:estimator}. \\
+B$_{\mathrm{off}}$ & $R_\mathrm{sig}$ & MC, $\hat\beta_w$ precomputed offline & \ref{h:noise}. \\
+C & derivative loss, Parseval weights & MC pathwise derivatives $\nabla^n u_0(X_t)$ with the flow Jacobian & \ref{h:estimator}. \\
+F & $\mathbb E[(Y^\theta - Y)^2]$, untruncated & MC, same paths & \ref{h:estimator}. FBSNN-type \cite{raissi2018fbsnn}. \\
+E & as B & B's targets permuted across $x$ within $t$-bins & Control. \\
 \bottomrule
 \end{tabularx}
+\end{center}
+\subsection{Benchmarks}
 
+The benchmarks are ordered by how far they depart from the setting of the
+theory: an endpoint payoff, a fixed horizon, and a generator that commutes with
+$\nabla_\sigma$. Each one tests a specific claim.
+
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.2cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{1.6cm} >{\raggedright\arraybackslash}p{2.2cm}@{}}
+\toprule
+Benchmark & Why & Tests & Arms \\
+\midrule
+Heat, $d=1$, $u_0=\sin(\pi x)$ & Closed-form check of the hierarchy and of Stroock's identity. A unit test, not evidence. & --- & all \\
+Anisotropic heat, $d\in\{2,5,10\}$ & Per-letter weights $2\nu_i t\,\xi_i^2$, and noise growth with the number of words. & \ref{h:cond}, \ref{h:noise} & all \\
+Ornstein--Uhlenbeck, $d\in\{1,2,5\}$ & Linear drift. Time-letter words are non-zero, so the time truncation matters. Closed form via Mehler. & \ref{h:cond}, \ref{h:estimator} & all \\
+Manufactured parabolic, $u^*=\sin\pi x+\varepsilon\sin k\pi x$, $k\in\{1,4,16\}$ & Direct test of the predicted scaling of the gain with $w_N(\lambda_{\max})$. & \ref{h:cond}, \ref{h:weights} & all \\
+Poisson of \cite{tepakbong2026taming} & Comparability with the incumbent. Elliptic, so there is no fixed horizon and the Parseval weights are undefined. & \ref{h:cond} & P, A0, A$^*$, D$'$ \\
+Mean exit time and committor of \cite{tepakbong2026taming} & Stopped payoffs and boundary layers. The committor payoff is discontinuous, so pathwise derivatives (arm C) do not exist. & \ref{h:estimator} & P, A0, A$^*$; B after the stopped-path extension \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\noindent For the parabolic benchmarks, choose $\nu$ and $T$ with
+$2\nu T\pi^2k^2 \gtrsim 1$. Otherwise $w_N \approx 1$ and no effect can appear.
+Report $w_N(\lambda_{\max})$ for each benchmark, so that the prediction of
+\ref{h:cond} is quantitative.
 
 \newpage
 \begin{thebibliography}{99}
@@ -166,6 +204,14 @@ Y.~Bengio, and A.~Courville.
 J.~Bettencourt, M.~J. Johnson, and D.~Duvenaud.
 \newblock Taylor-mode automatic differentiation for higher-order derivatives in {JAX}.
 \newblock In \emph{NeurIPS 2019 Workshop on Program Transformations for Machine Learning}, 2019.
+
+\bibitem{tepakbong2026taming}
+N.~Tepakbong, H.~Hu, C.~Liu, and X.~Zhou.
+\newblock Taming the loss landscape of {PINN}s with noisy {F}eynman--{K}ac
+  supervision: Operator preconditioning and non-asymptotic error bounds.
+\newblock In \emph{Proceedings of the 43rd International Conference on Machine
+  Learning}, volume 306 of \emph{PMLR}, Seoul, South Korea, 2026.
+\newblock arXiv:2606.00643.
 
 \end{thebibliography}
 
