@@ -1,0 +1,172 @@
+\documentclass[english]{article}
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+\usepackage{geometry}
+\geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in}
+\usepackage{textcomp}
+\usepackage{graphicx}
+\usepackage{bm}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{minted}
+\usemintedstyle{tango}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{tabularx} % tables with automatic width adjustment
+\usepackage{enumitem}
+\usepackage{siunitx}
+\DeclareSIUnit{\px}{px}
+\usepackage{caption}
+\usepackage{subcaption} % for side-by-side figures with individual captions
+\makeatletter
+\providecommand{\tabularnewline}{\\}
+
+\makeatother
+
+
+\usepackage{babel}
+
+
+\newenvironment{summary}{%
+  \begingroup
+  \renewcommand{\abstractname}{Summary}%
+  \begin{abstract}
+}{%
+  \end{abstract}
+  \endgroup
+}
+
+\begin{document}
+\title{\vspace{-1cm}Signature-based Hierarchy of Feynman-Kac Supervision Labels}
+\date{}
+\maketitle
+\begin{summary}
+ PINNs trainig on residual losses inherit the conditioning of $\mathcal{L}^*\mathcal{L}$ set by the PDE operator and often stall \cite{deryck2024operator}. FK supervision adds Monte Carlo point labels $\hat u (x)$ at a few collocation points. FK point supervision adds an identity term in the loss metric. Convergence on that term is then goverened by the spectrum of the network's neural tangent kernel (NTK) \cite{jacot2018ntk}. The NTK spectrum decays quickly, so high-frequency components still converge slowly. In addition the simulated paths that produce $\hat u$ carry noisy but unbiased information about $\nabla u, \nabla^2u, \dots $ . Ordinary FK-PINNs discard this. The proposal is to supervise the network's derivatives as well as its values. Take the labels from the orthogonal signature hierarchy $\beta_w = \mathbb{E}[Y\Phi_w]/\langle\hat{p}_w,\hat{p}_w\rangle$ (Coefficient in polynomial chaos expansion)\cite{chevyrev2026orthogonal} computed on the paths used for the FK estimates and weight each level by its Parseval norm, acting as a Sobolev-type preconditioner. 
+\end{summary}
+
+\section{Problem Setting}
+We will consider two classes of PDEs
+\begin{itemize}
+    \item \textit{Parabolic} $\partial_t u = \mathcal{L}u$, with $\mathcal{L} = b\cdot\nabla + \frac{1}{2} \mathrm{tr}(\sigma\sigma^\top \nabla^2)$. In this case the FK representation is $u(x, t) = \mathbb{E}[Y_{x,t}]$ with $Y_{x,t} = u_0(X^x_t)$, and $X^x$ solves $dX = b(X)dt + \sigma(X)dW$ with $X_0 = x$.
+    \item \textit{Elliptic} $\mathcal{L}u - Vu = -f$. Here the FK representation s a functional of the path stopped at and exit time.
+\end{itemize}
+
+The network is trained using a residual based loss function $R(\theta)$, the is a weighted sum of the PDEs residual loss, the FK collocation point loss and any other. Given an error at training time $\tau$, define $e_\tau = u_{\theta_\tau} - u$. Then we can produce a linearised approximation of the gradient flow at the current parameter setting $\theta_\tau$,
+
+\begin{equation}
+    \partial_\tau e_\tau = -K\mathcal{M}e_\tau + \epsilon, 
+\end{equation}
+where $K$ is the NTK integral operator
+\begin{equation}
+    (K\;g)(x)= \int\sum_j(\partial_{\theta_j}u_{\theta}(x))(\partial_{\theta_j}u_{\theta}(x'))g(x')dx'
+\end{equation}
+and $\mathcal{M}$ is the loss metric operator, which for residual losses, takes the form $\mathcal{L}^*\mathcal{L}$. For the FK residual loss, this operator is identity, thus the spectral conditioning is of $K$ alone. For derivative (Sobolev) loss, $\mathcal{M} = \sum_n \lambda_n (\nabla^n)^*(\nabla^n)$. Heuristically, if $K$ and $\mathcal{M}$ share Fourier eigenmodes, with eigenvalues $\mu_k$ and $m_k$, each error mode decays at rate $\mu_k m_k$, and the effective condition number over the resolved band is $\kappa = \max_k \mu_k m_k / \min_k \mu_k m_k$. For the FK value loss $m_k = 1$, so $\kappa = \kappa(K)$ and the decay of $\mu_k$ gives spectral bias. A second-order PDE residual has $m_k \sim |k|^4$, which overcompensates and moves the stiffness to high frequencies. Sobolev supervision gives $m_k = \sum_n \lambda_n |k|^{2n}$, and well-chosen $\lambda_n$ flatten $\mu_k m_k$. This is the conditioning gain. However, with noisy labels $g_n = \nabla^n u + \xi_n$ the dynamics gain a forcing term $K\sum_n \lambda_n (\nabla^n)^*\xi_n$, which weights the noise in mode $k$ by $\lambda_n |k|^n$. The same weights that improve conditioning therefore amplify high-frequency label noise. The question is whether the MC derivative labels obtained from simulating FK paths are cheap and quiet enough to deliver the Sobolev conditioning gain without amplifying noise excessively, and which weights $\lambda_n$ to use.
+\newpage
+\section{Theory}
+Given the path-like nature of the FK simulations we use to achieve this Sobolev conditioning, path signatures provide a natural coordinate system on the space of simulated paths. Gram--Schmidt orthogonalisation of the time-augmented It\^o signature, with respect to the Wiener measure, gives an orthogonal polynomial basis $\{\Phi_w\}$ on path space \cite{chevyrev2026orthogonal}. Any square-integrable FK payoff then expands as $Y = \sum_w \beta_w \Phi_w$. Each coefficient $\beta_w = \mathbb{E}[Y\Phi_w]/\langle \hat p_w, \hat p_w\rangle$ is a scalar expectation. Monte Carlo on the paths that already produce the point label $\hat u$ estimates it, with no further path simulation. The orthogonality holds under the law of the driving Brownian motion, which is the measure the FK labels are computed under. On Markov problems the coefficients recover the derivatives of $u$ up to known constants, so the hierarchy supplies exactly the derivative labels that Sobolev supervision needs. Parseval's identity also fixes a canonical weight for each level, so the order-wise loss weights need no hand-tuning. We can then introduce a term in the loss that is the residual of the model in chaos space,
+
+\begin{equation}
+    R_\mathrm{sig} = \mathbb{E}\left[\left(\sum_{w\in W_N}\left(\beta^\theta _w - \beta_w\right)\Phi_w\right)^2 \right].
+\end{equation}
+Generally, $R_\mathrm{sig}$ checks the network for consistency against each path, where rough errors do not cancel. In doing so it incorporates the modes the point loss (FK loss) is blind to, which are also the modes that converge slowly. Spectral bias of the NTK's eigenvalues fall with roughness, so a good metric loss kernel $\mathcal M$ should grow with roughness and compensate for this. With,
+
+\begin{equation}
+    \delta\beta_w := \beta^\theta_w - \beta_w = \frac{\mathbb E [(Y^\theta - Y)\Phi_w]}{\langle \hat p_w, \hat p_w\rangle}.
+\end{equation}
+For clarity,
+\begin{equation}
+    (Y^\theta - Y) = e(x,t) + \int^t_0 \nabla_\sigma e(X_s, t-s)\cdot dW_s.
+\end{equation}
+On the solution manifold this simplifies further as $e$ is martingale in $s$ (by It\^o's formula). From this it is clear that the $R_\mathrm{sig}$ loss is a normalized projection of these path errors into path space. It is clear that every word (sequence of incremented indices of path) contributes its own non-negative error. This leads to $\mathcal{M_0}\preceq \dots\preceq\mathcal{M}_N$. This path residual loss is then computed word by word for all simulated paths. An empty word $\Phi_\emptyset = 1$, so $\delta \beta_\emptyset = e(x,t)$, which resembles the FK point loss exactly. Then all other non-empty words have $\mathbb E [\Phi_w] = 0$, so $\delta\beta_w = \mathbb E[(\int \nabla_\sigma e\; dW)\Phi_w]/\langle \hat p_w, \hat p_w\rangle$, and here we encompass the stochastic part as a weighting on the orthogonal polynomial on path-space $\Phi_w$. On the PDE solution manifold, Parseval gives
+\begin{equation}
+    \sum_w \langle \hat p_w, \hat p_w\rangle \delta \beta_w^2 = \mathbb E[e_0(X_t)^2], \quad \sum_{w \neq 0} \langle \hat p_w, \hat p_w\rangle \delta \beta_w^2 = \mathbb E[e_0(X_t)^2] - \mathbb{E}[e_0(X_t)]^2 = \mathrm{Var}[e_o(X_t)].
+\end{equation}
+From this you can see that empty words carry the mean (What is used for the FK labels), and higher order interactions and words carry information in variance. For a general diffusion, the variance is the carr\'e du champ integral
+\cite{bakry2014analysis},
+\begin{equation}
+  \mathrm{Var}[e_0(X_t)] = \int_0^t P_s\big(|\nabla_\sigma P_{t-s}e_0|^2\big)(x)\,ds .
+\end{equation}
+Off the solution manifold, the It\^o isometry applied to the stochastic part of $Y^\theta - Y$ gives the general form
+\begin{equation}
+  \sum_{w\neq\emptyset}\langle\hat p_w,\hat p_w\rangle\,\delta\beta_w^2
+  = \int_0^t \mathbb E\big[|\nabla_\sigma e(X_s,\,t-s)|^2\big]\,ds .
+\end{equation}
+The non-empty words therefore supervise the gradient of the network's error along every simulated path, at every intermediate time, without explicit gradient labels. The point loss supervises only the value at $(x,t)$. The truncation $W_N$ sets the order of this supervision: level $n$ measures the $(n-1)$-th Malliavin derivative of the gradient error. For the heat equation on the solution manifold, level $n$ equals $\frac{(2\nu t)^n}{n!}\|\nabla^n e(x,t)\|_F^2$, so $R_\mathrm{sig}$ is an $H^N$ Sobolev loss with Parseval weights. The effect on training follows from the linearised gradient flow $\partial_\tau  e = -K\mathcal M_N e$, where $K$ is the NTK and $\langle e,\mathcal M_N e\rangle_\mu = \int R_\mathrm{sig}\,d\mu$ \cite{deryck2024operator}. Let $\mathcal L$ be self-adjoint in $L^2(\pi)$ with $\mathcal L\varphi_k = -\lambda_k\varphi_k$, take $\mu = \pi$, and write $e(\cdot,t) = \sum_k a_k\varphi_k$. On the solution manifold $e_0 = \sum_k e^{t\lambda_k}a_k\varphi_k$, so 
+\begin{equation}   \int e(x,t)^2\,d\pi = \sum_k a_k^2,   \qquad   \int \mathbb E\big[e_0(X^x_t)^2\big]\,d\pi(x) = \sum_k e^{2t\lambda_k}a_k^2 . 
+\end{equation}
+The first is the point loss and the second the full $R_\mathrm{sig}$. The truncated operator satisfies $I = \mathcal M_0 \preceq \mathcal M_N \preceq \mathcal M_\infty = e^{-2t\mathcal L}$. For heat it is the multiplier $w_N(\lambda) = \sum_{n\le N}(2t\lambda)^n/n!$, with $\lambda = \nu|\xi|^2$. The FK average damps mode $k$ by $e^{-t\lambda_k}$, so the point loss returns a vanishing gradient for rough error modes, and $R_\mathrm{sig}$ restores it. Suppose, as an idealisation, that $K$ shares the modes of $\mathcal L$ with eigenvalues $g(\lambda_k)$. Mode $k$ then converges at rate $g(\lambda_k)\,w_N(\lambda_k)$ rather than $g(\lambda_k)$. Under spectral bias $g$ decreases with roughness \cite{rahaman2019spectral}, while $w_N$ increases. If $g\,w_N$ stays non-increasing on the trained band $\lambda\le\lambda_{\max}$, 
+\begin{equation}  
+\kappa(K\mathcal M_N) = \frac{\kappa(K)}{w_N(\lambda_{\max})} . 
+\end{equation} 
+If $w_N$ grows faster than $g$ decays, $g\,w_N$ turns upward and large $N$ worsens $\kappa$. The truncation level is therefore the order of the preconditioner. Whether a finite $N$ lowers $\kappa$ for a real network is an empirical question.
+\subsection{Computational cost}
+
+\begin{itemize}
+  \item \emph{Path-order scaling.} The number of words grows like $(1+d)^N$, while the symmetric jets that matter on heat grow only like $\binom{d+N}{N}$. Orthogonalisation is free, because the Gram matrix is block-diagonal over $\sim_0$ classes \cite{chevyrev2026orthogonal}. The cost lies in evaluating words, so keep $N\le3$ and subsample words with importance weights, which keeps the estimate of $R_\mathrm{sig}$ unbiased.
+  \item \emph{Noise at higher orders.} A single level-$n$ coefficient has Monte Carlo variance of order $n!/(t^nM)$. The Parseval weight $t^n/n!$ cancels this per word, but the summed noise still grows with the number of words, roughly as $d^n/M$. Estimating $\delta\beta_w$ from $Y^\theta - Y$ on the same paths cancels the label noise at the solution, up to time discretisation.
+  \item \emph{Network-side cost.} The model coefficients need derivatives of $u_\theta$ along every simulated path, contracted with the tangent flow when the drift is non-trivial. Nested reverse-mode autograd is exponential in the order, so use forward- or Taylor-mode differentiation \cite{bettencourt2019taylor}. Expect roughly $2$--$4\times$ the per-step cost of plain FK at $N=2$.
+  \item \emph{Bias.} Derivative labels near $\partial\Omega$ inherit, and likely amplify, the $O(\sqrt{\Delta t})$ exit-overshoot bias. On Euler paths the martingale identity, and with it the noise cancellation, holds only approximately. Report per-level bias against distance to the boundary.
+\end{itemize}
+
+\section{Experiments}
+
+\subsection{Arms}
+ 
+\centering
+\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{@{}l >{\raggedright\arraybackslash}p{4.3cm} >{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}X@{}}
+\toprule
+Arm & Labels & Weights & Why this arm \\
+\midrule
+P & none (residual + BC only) & --- & Standard PINN. Context and comparability with Table~1 of \cite{tepakbong2026taming}. \\
+A0 & MC point labels & --- & FK-PINN baseline as published. \\
+A$^*$ & exact point labels & --- & Noise-free baseline. Separates label noise from conditioning. \\
+D & exact jets, $N\in\{1,2,3\}$ & Parseval & Pure conditioning effect of derivative supervision. Gate for everything else (H\ref{h:jets}). \\
+D$'$ & exact jets & tuned constant $\lambda_n$ & Canonical vs tuned weights (H\ref{h:weights}). Tuning budget equal to the total compute of arm B. \\
+B & MC hierarchy / Malliavin weights & Parseval & Method under test. \\
+C & MC pathwise jets $\nabla^n u_0(X_t)$, times the flow Jacobian & Parseval & Same derivatives from a non-signature estimator (H\ref{h:estimator}). \\
+E & B with labels permuted across $x$ within $t$-bins & Parseval & Rules out a generic regularisation effect of the extra loss terms. \\
+\bottomrule
+\end{tabularx}
+
+
+\newpage
+\begin{thebibliography}{99}
+
+\bibitem{chevyrev2026orthogonal}
+I.~Chevyrev, E.~Ferrucci, D.~Lee, T.~Lyons, H.~Oberhauser, and N.~Tapia.
+\newblock Orthogonal polynomials on path-space.
+\newblock arXiv:2602.18808, 2026.
+
+\bibitem{deryck2024operator}
+T.~De~Ryck, F.~Bonnet, S.~Mishra, and E.~de~B\'ezenac.
+\newblock An operator preconditioning perspective on training in physics-informed machine learning.
+\newblock In \emph{International Conference on Learning Representations}, 2024.
+
+\bibitem{jacot2018ntk}
+A.~Jacot, F.~Gabriel, and C.~Hongler.
+\newblock Neural tangent kernel: Convergence and generalization in neural networks.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2018.
+
+\bibitem{raissi2018fbsnn}
+M.~Raissi.
+\newblock Forward--backward stochastic neural networks: Deep learning of
+  high-dimensional partial differential equations.
+\newblock arXiv:1804.07010, 2018.
+
+\bibitem{rahaman2019spectral}
+N.~Rahaman, A.~Baratin, D.~Arpit, F.~Draxler, M.~Lin, F.~A. Hamprecht,
+Y.~Bengio, and A.~Courville.
+\newblock On the spectral bias of neural networks.
+\newblock arXiv:1806.08734 [stat.ML], 2019.
+
+\bibitem{bettencourt2019taylor}
+J.~Bettencourt, M.~J. Johnson, and D.~Duvenaud.
+\newblock Taylor-mode automatic differentiation for higher-order derivatives in {JAX}.
+\newblock In \emph{NeurIPS 2019 Workshop on Program Transformations for Machine Learning}, 2019.
+
+\end{thebibliography}
+
+\end{document}
