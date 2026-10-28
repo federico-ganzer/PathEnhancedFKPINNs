@@ -43,12 +43,7 @@
 \end{summary}
 
 \section{Problem Setting}\label{sec:setting}
-We will consider two classes of PDEs
-\begin{itemize}
-    \item \textit{Parabolic} $\partial_t u = \mathcal{L}u$ on $D\times(0,T]$, with $D=\mathbb R^d$ or a torus and $u(\cdot,0)=u_0$, where $\mathcal{L} = b\cdot\nabla + \frac{1}{2} \mathrm{tr}(\sigma\sigma^\top \nabla^2)$. In this case the FK representation is $u(x, t) = \mathbb{E}[Y_{x,t}]$ with $Y_{x,t} = u_0(X^x_t)$, and $X^x$ solves $dX = b(X)dt + \sigma(X)dW$ with $X_0 = x$.
-    \item \textit{Elliptic} $\mathcal{L}u - Vu = -f$ in a bounded domain $\Omega$, with $u=u_\partial$ on $\partial\Omega$. Here the FK representation is a functional of the path stopped at its exit time from $\Omega$.
-\end{itemize}
-The theory below focuses on the parabolic case, however, benchmarking is also presented on elliptical domain and theory can be expanded later to elliptic domains.
+We will focus on parabolic PDEs $\partial_t u = \mathcal{L}u$ on $D\times(0,T]$, with $D=\mathbb R^d$ or a torus and $u(\cdot,0)=u_0$, where $\mathcal{L} = b\cdot\nabla + \frac{1}{2} \mathrm{tr}(\sigma\sigma^\top \nabla^2)$. In this case the FK representation is $u(x, t) = \mathbb{E}[Y_{x,t}]$ with $Y_{x,t} = u_0(X^x_t)$, and $X^x$ solves $dX = b(X)dt + \sigma(X)dW$ with $X_0 = x$. The theory below focuses on the parabolic, however it can be extend (with modifications) to the elliptic case by considering bounded exit time FK estimates.
 
 The network is trained using a residual based loss function $R(\theta)$, which is a weighted sum of the PDE residual loss, the boundary and initial-condition loss, and a data term,
 \begin{equation}\label{eq:loss}
@@ -146,14 +141,14 @@ The plug-in square of the Monte Carlo mean is therefore biased upwards by $\math
 \begin{equation}\label{eq:subsample}
   \hat Y^\theta_i = u_\theta(x,t) + \sum_{j=1}^J\Big[g(s_j)\cdot\big(W_{s_{j+1}} - W_{s_j}\big) + m\,\big(g(r_j) - g(s_j)\big)\cdot\Delta W_{r_j}\Big].
 \end{equation}
-The first term is the coarse It\^o sum and the second a Horvitz--Thompson correction, so $\mathbb E[\hat Y^\theta_i\mid\text{path}]$ is the full Euler sum. Every $\widehat{\delta\beta}_w$ therefore stays unbiased, and with the U-statistic so does the estimate of $R_\mathrm{sig}$. For F, two independent draws of the $r_j$ give the unbiased product $(\hat Y^{\theta,1}_i - Y_i)(\hat Y^{\theta,2}_i - Y_i)$ in place of the square. The $r_j$ are drawn once per path at simulation time, so only $2J$ states and increments per path are stored. The cost is $2JB_xM'$ gradient evaluations per step ($3JB_xM'$ for F), about $6.6\times10^4$ at the defaults $B_x=32$, $M'=64$, $J=16$, comparable to the residual loss on $10^4$ collocation points. The price is that the same-path cancellation becomes approximate. At the solution the residual is the zero-mean correction error, of variance $\approx\frac12\,m\,(m\Delta t)\int_0^t\mathbb E\|\sigma^\top\nabla^2u\,\sigma\|_F^2\,ds$ for constant $\sigma$, instead of zero. This adds gradient noise but no bias; an ablation over $J$ measures its cost.
+The first term is the coarse It\^o sum and the second a Horvitz--Thompson correction, so $\mathbb E[\hat Y^\theta_i\mid\text{path}]$ is the full Euler sum. Every $\widehat{\delta\beta}_w$ therefore stays unbiased, and with the U-statistic so does the estimate of $R_\mathrm{sig}$. For F, two independent draws of the $r_j$ give the unbiased product $(\hat Y^{\theta,1}_i - Y_i)(\hat Y^{\theta,2}_i - Y_i)$ in place of the square. The $r_j$ are drawn once per path at simulation time, so only $2J$ states and increments per path are stored. The cost is $2JB_xM'$ gradient evaluations per step, about $6.6\times10^4$ at the defaults $B_x=32$, $M'=64$, $J=16$, comparable to the residual loss on $10^4$ collocation points. The price is that the same-path cancellation becomes approximate. At the solution the residual is the zero-mean correction error, of variance $\approx\frac12\,m\,(m\Delta t)\int_0^t\mathbb E\|\sigma^\top\nabla^2u\,\sigma\|_F^2\,ds$ for constant $\sigma$, instead of zero. This adds gradient noise but no bias; an ablation over $J$ measures its cost.
 
 \subsection{Computational cost}
 
 \begin{itemize}
-  \item \emph{Path-order scaling.} The number of words grows like $(1+d)^N$, while the symmetric derivatives that matter on heat grow only like $\binom{d+N}{N}$. Orthogonalisation is free, because the Gram matrix is block-diagonal over $\sim_0$ classes \cite{chevyrev2026orthogonal}. The cost lies in evaluating words, so keep $N\le3$ and subsample words with importance weights, which keeps the estimate of $R_\mathrm{sig}$ unbiased.
+  \item \emph{Path-order scaling.} The number of words grows like $(1+d)^N$, while the symmetric derivatives that matter on heat grow only like $\binom{d+N}{N}$. Orthogonalisation is free, because the Gram matrix is block-diagonal over $\sim_0$ classes \cite{chevyrev2026orthogonal}. The cost lies in evaluating words, so keep $N\le5$ and subsample words with importance weights, which keeps the estimate of $R_\mathrm{sig}$ unbiased.
   \item \emph{Noise at higher orders.} A single level-$n$ coefficient has Monte Carlo variance of order $n!/(t^nM)$. The Parseval weight $t^n/n!$ cancels this per word, but the summed noise still grows with the number of words, roughly as $d^n/M$. Estimating $\delta\beta_w$ from $Y^\theta - Y$ on the same paths cancels the label noise at the solution, up to time discretisation and the subsampling error of Section~\ref{sec:estimator}.
-  \item \emph{Network-side cost.} The model coefficients need derivatives of $u_\theta$ along every simulated path, contracted with the tangent flow when the drift is non-trivial. Nested reverse-mode autograd is exponential in the order, so use forward- or Taylor-mode differentiation \cite{bettencourt2019taylor}. For the local-derivative arms (D, D$'$, C), expect roughly $2$--$4\times$ the per-step cost of plain FK at $N=2$. B, B$_\mathrm{off}$, E and F are feasible only with the subsampling of Section~\ref{sec:estimator}, which brings them to the same order.
+  \item \emph{Network-side cost.} The model coefficients need derivatives of $u_\theta$ along every simulated path, contracted with the tangent flow when the drift is non-trivial. Nested reverse-mode autograd is exponential in the order, so use forward- or Taylor-mode differentiation \cite{bettencourt2019taylor}. 
   \item \emph{Bias (elliptic extension only, deferred).} Derivative labels near $\partial\Omega$ inherit, and likely amplify, the $O(\sqrt{\Delta t})$ exit-overshoot bias \cite{gobet2000killed}. Report per-level bias against distance to the boundary. On Euler paths, in every benchmark, the martingale identity, and with it the noise cancellation, holds only approximately.
 \end{itemize}
 
@@ -171,8 +166,6 @@ This phase tests two key hypotheses in two stages. \ref{h:cond} is a cheap gate 
   \textbf{H2b (truncation).} \emph{Test:} B against F (the untruncated path residual). \emph{Falsifier:} B is no better than F on every benchmark.\\
   If both falsifiers hold, the contribution is the preconditioner interpretation and its weights, not the signature estimator. Both comparisons are read against A0: if B $\approx$ A0, B adds nothing over the published baseline and \ref{h:estimator} is uninformative.
 \end{enumerate}
-\noindent Arm E is the control for the Monte Carlo arms in \ref{h:estimator}. If E $\approx$ B, the gain comes
-from regularisation rather than information. Because \ref{h:estimator} also runs on the \ref{h:cond} benchmark, B against D gives a first measure of how much of the noise-free gain survives Monte Carlo targets, ahead of \ref{h:noise}.
 
 \subsection{Arms}
 
@@ -189,17 +182,16 @@ D & $R_\mathrm{loc}$ \eqref{eq:levels}, $N\in\{1,2,3\}$ & exact derivatives & \r
 B & $R_\mathrm{sig}$ & MC, from $Y^\theta - Y$ on the same paths & Method under test. \ref{h:estimator}a, \ref{h:estimator}b. \\
 C & derivative loss, Parseval weights & MC pathwise derivatives $\nabla^n u_0(X_t)$ with the flow Jacobian & \ref{h:estimator}a. \\
 F & $\mathbb E[(Y^\theta - Y)^2]$, untruncated & MC, same paths & \ref{h:estimator}b. FBSNN-type \cite{raissi2018fbsnn}. \\
-E & as B & B's targets permuted across $x$ within $t$-bins & Control for \ref{h:estimator}. \\
+%E & as B & B's targets permuted across $x$ within $t$-bins & Control for \ref{h:estimator}. \\
 \bottomrule
 \end{tabularx}
 \end{center}
-\noindent Every arm also includes $R_\mathrm{res}$ and $R_\mathrm{bc}$; the second column is $R_\mathrm{data}$ in \eqref{eq:loss}. Because $R_\mathrm{sig}$ contains the empty word, which is the point loss, D, B and E replace the FK point loss rather than adding to it. B, E and F use the subsampled estimator of Section~\ref{sec:estimator}. Arms D$'$, B$_\mathrm{off}$ and P belong to the later experiments of Section~\ref{sec:further}.
 
 \subsection{Benchmarks}
 
 The benchmarks are ordered by how far they depart from the setting of the
 theory: an endpoint payoff, a fixed horizon, and a generator that commutes with
-$\nabla_\sigma$. Each one tests a specific claim.
+$\nabla_\sigma$.
 
 \begin{center}
 \small
@@ -215,34 +207,28 @@ Ornstein--Uhlenbeck, $d\in\{1,2\}$ & Linear drift. Time-letter words are non-zer
 \end{tabularx}
 \end{center}
 
-\noindent Heat and the manufactured problem are periodic on $[0,2)$, and OU is posed on $\mathbb R^d$, so no benchmark in this phase has a boundary, matching the theory. The manufactured problem uses the heat operator $\nu\partial_{xx}$ with source $f = -\nu\partial_{xx}u^*$, $u_0 = u^*$ and $\varepsilon = $ \tbc{$0.1$}. Its payoff includes the source, $Y = u_0(X_t) + \int_0^t f(X_s)\,ds$. The theory is unchanged, because the error equation stays homogeneous.
-For the parabolic benchmarks, choose $\nu$ and $T$ with
-$2\nu T\pi^2k^2 \gtrsim 1$. Otherwise $w_N \approx 1$ and no effect can appear.
-Report $w_N(\lambda_{\max})$ for each benchmark, so that the prediction of
-\ref{h:cond} is quantitative. The \ref{h:cond} sweep is over the horizon $T\in$ \tbc{$\{T_1, T_2\}$}, since the collocation time $t$ varies within a run.
+%\noindent Heat and the manufactured problem are periodic on $[0,2)$, and OU is posed on $\mathbb R^d$, so no benchmark in this phase has a boundary, matching the theory. The manufactured problem uses the heat operator $\nu\partial_{xx}$ with source $f = -\nu\partial_{xx}u^*$, $u_0 = u^*$ and $\varepsilon = $ \tbc{$0.1$}. Its payoff includes the source, $Y = u_0(X_t) + \int_0^t f(X_s)\,ds$. The theory is unchanged, because the error equation stays homogeneous.
+%For the parabolic benchmarks, choose $\nu$ and $T$ with
+%$2\nu T\pi^2k^2 \gtrsim 1$. Otherwise $w_N \approx 1$ and no effect can appear.
+%Report $w_N(\lambda_{\max})$ for each benchmark, so that the prediction of
+%\ref{h:cond} is quantitative. The \ref{h:cond} sweep is over the horizon $T\in$ \tbc{$\{T_1, T_2\}$}, since the collocation time $t$ varies within a run.
 
 \subsection{Protocol}\label{sec:protocol}
 \begin{itemize}[leftmargin=*]
-  \item \emph{Network and optimiser.} MLP on $(x,t)$, $\tanh$, width 128, depth 4, as in \cite[App.~E.2.1]{tepakbong2026taming}, with Taylor-mode derivatives. Adam for \tbc{30{,}000} steps, learning rate $10^{-3}\to10^{-6}$ by exponential decay. Every arm steps the scheduler once per optimiser step, so all arms see the same schedule. This removes the scheduler-stepping confound in the existing FK arm \tbc{[one line describing the confound]}. There is no L-BFGS phase, because the subsampled losses are stochastic.
-  \item \emph{Monte Carlo and collocation.} $M=500$ paths per FK point and $\Delta t = 10^{-3}$, as in \cite{tepakbong2026taming}. \tbc{$n_\mathrm{coll}=10^4$} collocation points in $(x,t)$ with $t\sim U(0,T]$, of which a fraction $p_\mathrm{data} = 0.02$ become FK points (about 200), and \tbc{400} initial-condition points. Words: $N\le3$, $N_0 = $ \tbc{$2$}.
+  \item \emph{Network and optimiser.} MLP on $(x,t)$, $\tanh$, width 128, depth 4, as in \cite[App.~E.2.1]{tepakbong2026taming}, with Taylor-mode derivatives. Adam for 30{,}000 steps, learning rate $10^{-3}\to10^{-6}$ by exponential decay. Every arm steps the scheduler once per optimiser step, so all arms see the same schedule.
+  \item \emph{Monte Carlo and collocation.} $M=500$ paths per FK point and $\Delta t = 10^{-3}$, as in \cite{tepakbong2026taming}. $n_\mathrm{coll}=10^4$ collocation points in $(x,t)$ with $t\sim U(0,T]$, of which a fraction $p_\mathrm{data} = 0.02$ become FK points (about 200), and 400 initial-condition points. Words: $N\le5$, $N_0 = 2$.
   \item \emph{Offline and online.} Offline: paths, payoffs $Y_i$, features $\Phi^{(i)}_w$, the labels $\hat u$ and $\hat\beta_w$, and the subsampling nodes are computed once before training and stored. Online: the model side ($Y^\theta$, $\beta^\theta_w$) at every step.
-  \item \emph{Loss weights.} $\lambda_\mathrm{res}$, $\lambda_\mathrm{bc}$ and $\lambda_\mathrm{data}$ are tuned once per benchmark on A$^*$ \tbc{(grid $10^{-2},\dots,10^{2}$)} and shared by all arms, so arms differ only in $R_\mathrm{data}$.
+  \item \emph{Loss weights.} $\lambda_\mathrm{res}$, $\lambda_\mathrm{bc}$ and $\lambda_\mathrm{data}$ are tuned once per benchmark on A$^*$ and shared by all arms, so arms differ only in $R_\mathrm{data}$.
   \item \emph{Seeds and budgets.} 5 seeds per configuration (initialisation and path draw). All arms get the same number of optimiser steps. Error is also reported against wall-clock, and A0 and A$^*$ are rerun to B's wall-clock, so that B's higher per-step cost cannot hide.
 \end{itemize}
-
+\newpage
 \subsection{Metrics}
 \begin{itemize}[leftmargin=*]
   \item Relative $L^2$ and $H^1$ errors on a held-out grid, at $t=T$ and averaged over $(0,T]$.
-  \item Per-word error energies $\langle\hat p_w,\hat p_w\rangle\,\delta\beta_w^2$ at the FK points, using exact coefficients (heat, OU) or a large-$M$ reference (\tbc{$M=10^5$}).
-  \item $\kappa$: at checkpoints \tbc{$0$, $10^3$, $10^4$ and the final step}, the condition number of the Gauss--Newton matrix of each arm's data term on $n_c = $ \tbc{512} points, computed as $JJ^\top$, where $J$ is the Jacobian with respect to $\theta$ of the term's residuals (for $R_\mathrm{sig}$, the per-word residuals $\langle\hat p_w,\hat p_w\rangle^{1/2}\delta\beta_w$). Its non-zero spectrum is that of the discretised $K\mathcal M$. Eigenvalues below \tbc{$10^{-8}$} times the largest are excluded, which defines the resolved band. $\kappa$ is reported per time slice, since $w_N$ depends on $t$.
+  \item Per-word error energies $\langle\hat p_w,\hat p_w\rangle\,\delta\beta_w^2$ at the FK points, using exact coefficients (heat, OU) or a large-$M$ reference ($M=10^5$).
+  \item $\kappa$: at checkpoints $0$, $10^3$, $10^4$ and the final step, the condition number of the Gauss--Newton matrix of each arm's data term on $n_c = 512$ points, computed as $JJ^\top$, where $J$ is the Jacobian with respect to $\theta$ of the term's residuals (for $R_\mathrm{sig}$, the per-word residuals $\langle\hat p_w,\hat p_w\rangle^{1/2}\delta\beta_w$). Its non-zero spectrum is that of the discretised $K\mathcal M$. Eigenvalues below $10^{-8}$ times the largest are excluded, which defines the resolved band. $\kappa$ is reported per time slice, since $w_N$ depends on $t$.
 \end{itemize}
 
-\subsection{Decision rules}\label{sec:decision}
-\begin{itemize}[leftmargin=*]
-  \item X $\approx$ Y: the 95\% bootstrap CI over seeds of the mean difference in $\log_{10}$ relative $L^2$ error at the final step contains zero. X beats Y (beyond seed noise): the CI lies entirely on X's side of zero.
-  \item The $\kappa$ ratio $\kappa_{\mathrm A^*}/\kappa_\mathrm D$ grows with $w_N(\lambda_{\max})$ if its Spearman correlation with $w_N(\lambda_{\max})$ over the \ref{h:cond} sweep has a bootstrap CI above zero.
-  \item Stopping rule: if D $\approx$ A$^*$ at $k=16$ on the manufactured benchmark for every $N$ and $T$, \ref{h:cond} is falsified, Stage~2 is not run, and the phase ends with that negative result.
-\end{itemize}
 
 \subsection{Run count, compute and timeline}\label{sec:budget}
 \begin{center}
@@ -261,55 +247,10 @@ Stage & Content & Runs \\
 \bottomrule
 \end{tabularx}
 \end{center}
-\noindent Compute: \tbc{[X]} GPU-hours per run for the local arms (A0, A$^*$, D, C) and about $2$--$4\times$ that for B, E and F, so \tbc{[Y]} GPU-hours in total on \tbc{[hardware]}. Timeline: Stage~1 \tbc{[weeks 1--2]}, gate decision \tbc{[date]}, Stage~2 \tbc{[weeks 3--5]}, write-up \tbc{[week 6]}.
 
-\section{Further hypotheses and experiments}\label{sec:further}
-These follow once \ref{h:cond} and \ref{h:estimator} hold. They are listed so that the full programme is visible, and are not part of this request.
+\textbf{Compute and internal deadlines to be discussed}
 
-\begin{enumerate}[label=\textbf{H\arabic*}, ref=H\arabic*, leftmargin=*, start=3]
-  \item\label{h:weights} \textbf{Parseval weights.} The Parseval weights match the best per-level weights found by tuning. \emph{Test:} D against D$'$ at equal tuning budget. D$'$ is tuned in two families, constant $\lambda_n$ and $\lambda_n t^n$, so that the tuned constants are not confounded with the $t^n/n!$ dependence of the Parseval weights. \emph{Falsifier:} D$'$ beats D beyond seed noise. The weights then save tuning but carry no further benefit.
-  \item\label{h:noise} \textbf{Monte Carlo targets keep the gain.} Estimated on the same paths as $Y^\theta$, Monte Carlo targets retain most of the noise-free gain: $G_\mathrm B \ge$ \tbc{$0.5$}\,$G_\mathrm D$, where $G_\mathrm X$ is the mean $\log_{10}$ relative $L^2$ error of A0 minus that of X. \emph{Test:} B against D, and B against B$_{\mathrm{off}}$. \emph{Falsifier:} B $\approx$ A0. A gap B $>$ B$_{\mathrm{off}}$ confirms that the same-path cancellation removes the label noise.
-\end{enumerate}
-
-\begin{center}
-\small
-\renewcommand{\arraystretch}{1.15}
-\begin{tabularx}{\textwidth}{@{}l >{\raggedright\arraybackslash}p{3.5cm} >{\raggedright\arraybackslash}p{4.6cm} >{\raggedright\arraybackslash}X@{}}
-\toprule
-Arm & Data term $R_\mathrm{data}$ & Targets & Tests \\
-\midrule
-D$'$ & derivative loss, tuned $\lambda_n$ (constant, and $\lambda_n t^n$) & exact derivatives & \ref{h:weights}. \\
-B$_{\mathrm{off}}$ & $R_\mathrm{sig}$ & MC, $\hat\beta_w$ precomputed offline; $\beta^\theta_w$ on an independent path set, resampled each step & \ref{h:noise}. \\
-P & none (residual + BC only) & --- & Context: Table~1 of \cite{tepakbong2026taming}. \\
-\bottomrule
-\end{tabularx}
-\end{center}
-
-\begin{center}
-\small
-\renewcommand{\arraystretch}{1.15}
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.2cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{1.6cm} >{\raggedright\arraybackslash}p{2.2cm}@{}}
-\toprule
-Benchmark & Why & Tests & Arms \\
-\midrule
-Manufactured parabolic, as above & Tuned against Parseval weights; same-path cancellation. & \ref{h:weights}, \ref{h:noise} & D, D$'$, B, B$_\mathrm{off}$ \\
-Anisotropic heat, $d\in\{2,5,10\}$ & Per-letter weights $2\nu_i t\,\xi_i^2$ (Section~\ref{sec:identities}), and noise growth with the number of words. & \ref{h:cond}, \ref{h:noise} & all \\
-Ornstein--Uhlenbeck, $d=5$ & \ref{h:estimator} in higher dimension. & \ref{h:estimator}a, \ref{h:estimator}b, \ref{h:noise} & all \\
-Poisson of \cite{tepakbong2026taming} & Comparability with the incumbent, outside the theory. $R_\mathrm{sig}$ extends to the stopped payoff once the basis is built on a fixed interval $[0,T]$ (to be written up), but its coefficients are no longer local derivatives, so D and C do not run and there is no $\kappa$ prediction. P and A0 are also run with the published Adam + L-BFGS schedule to reproduce \cite[Table~1]{tepakbong2026taming}. & \ref{h:cond} (D$'$ vs A$^*$), \ref{h:noise} & P, A0, A$^*$, D$'$, B, B$_\mathrm{off}$, E, F \\
-Mean exit time and committor of \cite{tepakbong2026taming} & Stopped payoffs and boundary layers, with the boundary-bias study. The committor payoff is discontinuous, so pathwise derivatives (arm C) do not exist, while B does. & After the stopped-path extension & P, A0, A$^*$, B, F \\
-\bottomrule
-\end{tabularx}
-\end{center}
-
-\section{Requested approval}
-I am asking for approval of:
-\begin{enumerate}[leftmargin=*]
-  \item Stage~1: the heat unit test and the \ref{h:cond} gate on the manufactured benchmark (127 runs).
-  \item Stage~2, conditional on the gate: \ref{h:estimator} on the manufactured and OU benchmarks, and the subsampling ablation (160 runs).
-  \item The compute budget of Section~\ref{sec:budget}.
-\end{enumerate}
-The hypotheses and experiments of Section~\ref{sec:further}, including the elliptic benchmarks, will be proposed separately once \ref{h:cond} and \ref{h:estimator} hold.
-
+\newpage
 \begin{thebibliography}{99}
 
 \bibitem{chevyrev2026orthogonal}
@@ -395,5 +336,44 @@ E.~Gobet.
 \newblock \emph{Stochastic Processes and their Applications}, 87(2):167--197, 2000.
 
 \end{thebibliography}
+\newpage
+\appendix
+\section{Further hypotheses and experiments (For Later)}\label{sec:further}
+These follow once \ref{h:cond} and \ref{h:estimator} hold. They are listed so that the full programme is visible, and are not part of this request.
+
+\begin{enumerate}[label=\textbf{H\arabic*}, ref=H\arabic*, leftmargin=*, start=3]
+  \item\label{h:weights} \textbf{Parseval weights.} The Parseval weights match the best per-level weights found by tuning. \emph{Test:} D against D$'$ at equal tuning budget. D$'$ is tuned in two families, constant $\lambda_n$ and $\lambda_n t^n$, so that the tuned constants are not confounded with the $t^n/n!$ dependence of the Parseval weights. \emph{Falsifier:} D$'$ beats D beyond seed noise. The weights then save tuning but carry no further benefit.
+  \item\label{h:noise} \textbf{Monte Carlo targets keep the gain.} Estimated on the same paths as $Y^\theta$, Monte Carlo targets retain most of the noise-free gain: $G_\mathrm B \ge$ 0.5\,$G_\mathrm D$, where $G_\mathrm X$ is the mean $\log_{10}$ relative $L^2$ error of A0 minus that of X. \emph{Test:} B against D, and B against B$_{\mathrm{off}}$. \emph{Falsifier:} B $\approx$ A0. A gap B $>$ B$_{\mathrm{off}}$ confirms that the same-path cancellation removes the label noise.
+\end{enumerate}
+
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{@{}l >{\raggedright\arraybackslash}p{3.5cm} >{\raggedright\arraybackslash}p{4.6cm} >{\raggedright\arraybackslash}X@{}}
+\toprule
+Arm & Data term $R_\mathrm{data}$ & Targets & Tests \\
+\midrule
+D$'$ & derivative loss, tuned $\lambda_n$ (constant, and $\lambda_n t^n$) & exact derivatives & \ref{h:weights}. \\
+B$_{\mathrm{off}}$ & $R_\mathrm{sig}$ & MC, $\hat\beta_w$ precomputed offline; $\beta^\theta_w$ on an independent path set, resampled each step & \ref{h:noise}. \\
+P & none (residual + BC only) & --- & Context: Table~1 of \cite{tepakbong2026taming}. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.2cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{1.6cm} >{\raggedright\arraybackslash}p{2.2cm}@{}}
+\toprule
+Benchmark & Why & Tests & Arms \\
+\midrule
+Manufactured parabolic, as above & Tuned against Parseval weights; same-path cancellation. & \ref{h:weights}, \ref{h:noise} & D, D$'$, B, B$_\mathrm{off}$ \\
+Anisotropic heat, $d\in\{2,5,10\}$ & Per-letter weights $2\nu_i t\,\xi_i^2$ (Section~\ref{sec:identities}), and noise growth with the number of words. & \ref{h:cond}, \ref{h:noise} & all \\
+Ornstein--Uhlenbeck, $d=5$ & \ref{h:estimator} in higher dimension. & \ref{h:estimator}a, \ref{h:estimator}b, \ref{h:noise} & all \\
+Poisson of \cite{tepakbong2026taming} & Comparability with the incumbent, outside the theory. $R_\mathrm{sig}$ extends to the stopped payoff once the basis is built on a fixed interval $[0,T]$ (to be written up), but its coefficients are no longer local derivatives, so D and C do not run and there is no $\kappa$ prediction. P and A0 are also run with the published Adam + L-BFGS schedule to reproduce \cite[Table~1]{tepakbong2026taming}. & \ref{h:cond} (D$'$ vs A$^*$), \ref{h:noise} & P, A0, A$^*$, D$'$, B, B$_\mathrm{off}$, E, F \\
+Mean exit time and committor of \cite{tepakbong2026taming} & Stopped payoffs and boundary layers, with the boundary-bias study. The committor payoff is discontinuous, so pathwise derivatives (arm C) do not exist, while B does. & After the stopped-path extension & P, A0, A$^*$, B, F \\
+\bottomrule
+\end{tabularx}
+\end{center}
 
 \end{document}
