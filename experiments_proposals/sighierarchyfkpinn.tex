@@ -43,7 +43,7 @@
 \end{summary}
 
 \section{Problem Setting}\label{sec:setting}
-We will focus on parabolic PDEs $\partial_t u = \mathcal{L}u$ on $D\times(0,T]$, with $D=\mathbb R^d$ and $u(\cdot,0)=u_0$, where $\mathcal{L} = b\cdot\nabla + \frac{1}{2} \mathrm{tr}(\sigma\sigma^\top \nabla^2)$. In this case the FK representation is $u(x, t) = \mathbb{E}[Y_{x,t}]$ with $Y_{x,t} = u_0(X^x_t)$, and $X^x$ solves $dX = b(X)dt + \sigma(X)dW$ with $X_0 = x$. The theory below focuses on the parabolic, however it can be extended (with modifications) to the elliptic case by considering bounded exit time FK estimates.
+We will focus on parabolic PDEs $\partial_t u = \mathcal{L}u$ on $D\times(0,T]$, with $D=\mathbb R^d$ and $u(\cdot,0)=u_0$, where $\mathcal{L} = b\cdot\nabla + \frac{1}{2} \mathrm{tr}(\sigma\sigma^\top \nabla^2)$. In this case the FK representation is $u(x, t) = \mathbb{E}[Y_{x,t}]$ with $Y_{x,t} = u_0(X^x_t)$, and $X^x$ solves $dX = b(X)dt + \sigma(X)dW$ with $X_0 = x$ \cite{oksendal2003sde,karatzas1991brownian}. The theory below focuses on the parabolic, however it can be extended (with modifications) to the elliptic case by considering bounded exit time FK estimates.
 
 The network is trained using a residual based loss function $R(\theta)$, which is a weighted sum of the PDE residual loss, the boundary and initial-condition loss, and a data term,
 \begin{equation}\label{eq:loss}
@@ -51,22 +51,22 @@ The network is trained using a residual based loss function $R(\theta)$, which i
   \qquad
   R^\mathrm{FK}_\mathrm{data}(\theta) = \frac{1}{n_\mathrm{FK}}\sum_{i=1}^{n_\mathrm{FK}}\big(u_\theta(x_i,t_i)-\hat u_i\big)^2 .
 \end{equation}
-Here $r_\theta$ is the PDE residual of $u_\theta$, $\mu$ is the collocation measure, $R_\mathrm{bc}$ penalises the boundary and initial conditions, and $R_\mathrm{data}$ is the FK point loss $R^\mathrm{FK}_\mathrm{data}$ for FK-PINNs \cite{tepakbong2026taming}, or one of the path losses below. The weights $\lambda_\mathrm{res}$, $\lambda_\mathrm{bc}$ and $\lambda_\mathrm{data}$ are hyperparameters. Given an error at training time $\tau$, define $e_\tau = u_{\theta_\tau} - u$. Then we can produce a linearised approximation of the gradient flow at the current parameter setting $\theta_\tau$,
+Here $r_\theta$ is the PDE residual of $u_\theta$, $\mu$ is the collocation measure, $R_\mathrm{bc}$ penalises the boundary and initial conditions, and $R_\mathrm{data}$ is the FK point loss $R^\mathrm{FK}_\mathrm{data}$ for FK-PINNs \cite{tepakbong2026taming}, or one of the path losses below. The weights $\lambda_\mathrm{res}$, $\lambda_\mathrm{bc}$ and $\lambda_\mathrm{data}$ are hyperparameters. Given an error at training time $\tau$, define $e_\tau = u_{\theta_\tau} - u$. Then we can produce a linearised approximation of the gradient flow at the current parameter setting $\theta_\tau$ \cite{jacot2018ntk,deryck2024operator},
 
 \begin{equation}\label{eq:gf}
     \partial_\tau e_\tau = -K\mathcal{M}e_\tau + \epsilon,
 \end{equation}
-where $\epsilon$ is the forcing from label noise ($\epsilon=0$ for exact labels), and $K$ is the NTK integral operator
+where $\epsilon$ is the forcing from label noise ($\epsilon=0$ for exact labels), and $K$ is the NTK integral operator \cite{jacot2018ntk}
 \begin{equation}
     (K\;h)(x)= \int\sum_j(\partial_{\theta_j}u_{\theta}(x))(\partial_{\theta_j}u_{\theta}(x'))h(x')\,d\mu(x')
 \end{equation}
-and $\mathcal{M}$ is the loss metric operator, which for residual losses, takes the form $\mathcal{L}^*\mathcal{L}$. For the FK point loss, this operator is identity, thus the spectral conditioning is of $K$ alone. For derivative (Sobolev) loss \cite{czarnecki2017sobolev,lu2022sobolev}, $\mathcal{M} = \sum_n \lambda_n (\nabla^n)^*(\nabla^n)$. If $K$ and $\mathcal{M}$ share Fourier eigenmodes, with eigenvalues $g_\xi$ and $w_\xi$ at frequency $\xi$, each error mode decays at rate $g_\xi w_\xi$, and the effective condition number over the resolved band is $\kappa = \max_\xi g_\xi w_\xi / \min_\xi g_\xi w_\xi$. For the FK point loss $w_\xi = 1$, so $\kappa = \kappa(K)$ and the decay of $g_\xi$ gives spectral bias. A second-order PDE residual has $w_\xi \sim |\xi|^4$, which moves the stiffness to high frequencies. Sobolev supervision gives $w_\xi = \sum_n \lambda_n |\xi|^{2n}$, and well-chosen $\lambda_n$ flatten $g_\xi w_\xi$. This is the conditioning gain. However, with noisy labels $\hat u^{(n)} = \nabla^n u + \eta_n$ the dynamics gain the forcing term $\epsilon = K\sum_n \lambda_n (\nabla^n)^*\eta_n$, which weights the noise in mode $\xi$ by $\lambda_n |\xi|^n$. The same weights that improve conditioning therefore amplify high-frequency label noise. The question is whether the MC derivative labels obtained from simulating FK paths are cheap and quiet enough to deliver the Sobolev conditioning gain without amplifying noise excessively, and which weights $\lambda_n$ to use.
+and $\mathcal{M}$ is the loss metric operator, which for residual losses, takes the form $\mathcal{L}^*\mathcal{L}$ \cite{deryck2024operator}. For the FK point loss, this operator is identity \cite{tepakbong2026taming}, thus the spectral conditioning is of $K$ alone. For derivative (Sobolev) loss \cite{czarnecki2017sobolev,lu2022sobolev}, $\mathcal{M} = \sum_n \lambda_n (\nabla^n)^*(\nabla^n)$. If $K$ and $\mathcal{M}$ share Fourier eigenmodes, with eigenvalues $g_\xi$ and $w_\xi$ at frequency $\xi$, each error mode decays at rate $g_\xi w_\xi$, and the effective condition number over the resolved band is $\kappa = \max_\xi g_\xi w_\xi / \min_\xi g_\xi w_\xi$. For the FK point loss $w_\xi = 1$, so $\kappa = \kappa(K)$ and the decay of $g_\xi$ gives spectral bias \cite{rahaman2019spectral,wang2022ntk}. A second-order PDE residual has $w_\xi \sim |\xi|^4$, which moves the stiffness to high frequencies \cite{deryck2024operator}. Sobolev supervision gives $w_\xi = \sum_n \lambda_n |\xi|^{2n}$, and well-chosen $\lambda_n$ flatten $g_\xi w_\xi$. This is the conditioning gain. However, with noisy labels $\hat u^{(n)} = \nabla^n u + \eta_n$ the dynamics gain the forcing term $\epsilon = K\sum_n \lambda_n (\nabla^n)^*\eta_n$, which weights the noise in mode $\xi$ by $\lambda_n |\xi|^n$. The same weights that improve conditioning therefore amplify high-frequency label noise. The question is whether the MC derivative labels obtained from simulating FK paths are cheap and quiet enough to deliver the Sobolev conditioning gain without amplifying noise excessively, and which weights $\lambda_n$ to use.
 
 \section{Theory}
 \subsection{Signature coordinates and the path loss}\label{sec:sig}
-Because FK labels are computed from simulated paths, path signatures provide a natural coordinate system on the space of simulated paths. Gram--Schmidt orthogonalisation of the time-augmented It\^o signature, gives an orthogonal polynomial basis $\{\Phi_w\}$ on path space \cite{chevyrev2026orthogonal}. Here $\hat W_s = (s, W_s)$ is the driving Brownian motion augmented with time, and a word $w = i_1\cdots i_k$ is a sequence of letters $i_j\in\{0,1,\dots,d\}$, each indexing a coordinate of $\hat W$: $0$ for time and $i$ for $W^i$ (words ending in $0$ are dropped). Gram--Schmidt maps each word to an element $\hat p_w$ of the tensor algebra, $\Phi_w := \langle\hat p_w, S(\hat W)_{0,t}\rangle$ with $S$ the It\^o signature, and $\langle\hat p_w,\hat p_w\rangle = \mathbb E[\Phi_w^2]$ is the induced inner product. Any square-integrable FK payoff then expands as $Y = \sum_w \beta_w \Phi_w$. Each coefficient $\beta_w = \mathbb{E}[Y\Phi_w]/\langle \hat p_w, \hat p_w\rangle$ is a scalar expectation. Monte Carlo on the paths that already produce the point label $\hat u$ estimates it, with no further path simulation. The orthogonality holds under the law of the driving Brownian motion, which is the measure the FK labels are computed under. For heat and OU the coefficients recover the derivatives of $u$ up to known constants (for heat, $\beta_w = (2\nu)^{n/2}\partial_{i_1}\cdots\partial_{i_n}u(x,t)$ for a word $w=i_1\cdots i_n$ without time letters), so the hierarchy supplies exactly the derivative labels that Sobolev supervision needs. For general drift the coefficients are averages of derivatives along the paths, weighted by the tangent flow, rather than local derivatives of $u$.
+Because FK labels are computed from simulated paths, path signatures provide a natural coordinate system on the space of simulated paths \cite{chevyrev2016primer,lyons2024signature}. Gram--Schmidt orthogonalisation of the time-augmented It\^o signature, gives an orthogonal polynomial basis $\{\Phi_w\}$ on path space \cite{chevyrev2026orthogonal}. Here $\hat W_s = (s, W_s)$ is the driving Brownian motion augmented with time, and a word $w = i_1\cdots i_k$ is a sequence of letters $i_j\in\{0,1,\dots,d\}$, each indexing a coordinate of $\hat W$: $0$ for time and $i$ for $W^i$ (words ending in $0$ are dropped). Gram--Schmidt maps each word to an element $\hat p_w$ of the tensor algebra, $\Phi_w := \langle\hat p_w, S(\hat W)_{0,t}\rangle$ with $S$ the It\^o signature, and $\langle\hat p_w,\hat p_w\rangle = \mathbb E[\Phi_w^2]$ is the induced inner product. Any square-integrable FK payoff then expands as $Y = \sum_w \beta_w \Phi_w$ \cite{chevyrev2026orthogonal,nualart2006malliavin}. Each coefficient $\beta_w = \mathbb{E}[Y\Phi_w]/\langle \hat p_w, \hat p_w\rangle$ is a scalar expectation. Monte Carlo on the paths that already produce the point label $\hat u$ estimates it, with no further path simulation. The orthogonality holds under the law of the driving Brownian motion, which is the measure the FK labels are computed under. For heat and OU the coefficients recover the derivatives of $u$ up to known constants (for heat, $\beta_w = (2\nu)^{n/2}\partial_{i_1}\cdots\partial_{i_n}u(x,t)$ for a word $w=i_1\cdots i_n$ without time letters \cite{stroock1987homogeneous}), so the hierarchy supplies exactly the derivative labels that Sobolev supervision needs. For general drift the coefficients are averages of derivatives along the paths, weighted by the tangent flow, rather than local derivatives of $u$ \cite{fournie1999applications}.
 
-By It\^o's formula applied to $s\mapsto u(X_s,t-s)$, the payoff has the martingale representation $Y = u(x,t) + \int_0^t\nabla_\sigma u(X_s,t-s)\cdot dW_s$, where $\nabla_\sigma := \sigma^\top\nabla$. Replacing $u$ by the network defines the model payoff and its coefficients,
+By It\^o's formula applied to $s\mapsto u(X_s,t-s)$, the payoff has the martingale representation $Y = u(x,t) + \int_0^t\nabla_\sigma u(X_s,t-s)\cdot dW_s$ \cite{pardoux1990adapted}, where $\nabla_\sigma := \sigma^\top\nabla$. Replacing $u$ by the network defines the model payoff and its coefficients,
 \begin{equation}\label{eq:ytheta}
   Y^\theta := u_\theta(x,t) + \int_0^t\nabla_\sigma u_\theta(X_s,t-s)\cdot dW_s,
   \qquad
@@ -80,7 +80,7 @@ Let $W_N$ be the set of words with at most $N$ non-zero letters and at most $N_0
 In \eqref{eq:loss}, $R_\mathrm{sig}$ averaged over the FK points replaces the FK point loss as $R_\mathrm{data}$.
 
 \subsection{Path-error identities}\label{sec:identities}
-Generally, $R_\mathrm{sig}$ checks the network for consistency against each path, where rough errors do not cancel. In doing so it restores weight on the modes the FK point loss heavily down-weights, which are also the modes that converge slowly. Under spectral bias, the NTK's eigenvalues fall with roughness, so a good loss metric operator $\mathcal M$ should grow with roughness and compensate for this. Write
+Generally, $R_\mathrm{sig}$ checks the network for consistency against each path, where rough errors do not cancel. In doing so it restores weight on the modes the FK point loss heavily down-weights, which are also the modes that converge slowly. Under spectral bias, the NTK's eigenvalues fall with roughness \cite{rahaman2019spectral,wang2022ntk}, so a good loss metric operator $\mathcal M$ should grow with roughness and compensate for this. Write
 
 \begin{equation}\label{eq:dbeta}
     \delta\beta_w := \beta^\theta_w - \beta_w = \frac{\mathbb E [(Y^\theta - Y)\Phi_w]}{\langle \hat p_w, \hat p_w\rangle}.
@@ -117,17 +117,17 @@ The non-empty words therefore supervise the gradient of the network's error alon
 with all time letters kept for OU ($N_0=\infty$); for heat, words with time letters have zero coefficient. For anisotropic heat, $\sigma = \mathrm{diag}(\sqrt{2\nu_i})$, a word $i_1\cdots i_n$ without time letters carries weight $\prod_k(2\nu_{i_k}t)/n!$ on $|\partial_{i_1}\cdots\partial_{i_n}e|^2$, that is $2\nu_i t\,\xi_i^2$ per letter $i$ on the Fourier mode of frequency $\xi$. Arm D trains on $R_\mathrm{loc}$ with exact derivatives, so it is noise-free.
 
 \subsection{Conditioning}\label{sec:conditioning}
-The effect on training follows from the linearised gradient flow $\partial_\tau  e = -K\mathcal M_N e$, where $K$ is the NTK and $\langle e,\mathcal M_N e\rangle_\mu = \int R_\mathrm{sig}\,d\mu$ \cite{deryck2024operator}. Let $\mathcal L$ be self-adjoint in $L^2(\pi)$, where $\pi$ is the invariant measure of $X$, with $\mathcal L\varphi_k = -\lambda_k\varphi_k$, take $\mu = \pi$, and write $e(\cdot,t) = \sum_k a_k\varphi_k$. On the zero-residual subspace $e_0 = \sum_k e^{t\lambda_k}a_k\varphi_k$, so
+The effect on training follows from the linearised gradient flow $\partial_\tau  e = -K\mathcal M_N e$, where $K$ is the NTK \cite{jacot2018ntk} and $\langle e,\mathcal M_N e\rangle_\mu = \int R_\mathrm{sig}\,d\mu$ \cite{deryck2024operator}. Let $\mathcal L$ be self-adjoint in $L^2(\pi)$, where $\pi$ is the invariant measure of $X$, with $\mathcal L\varphi_k = -\lambda_k\varphi_k$ \cite{bakry2014analysis}, take $\mu = \pi$, and write $e(\cdot,t) = \sum_k a_k\varphi_k$. On the zero-residual subspace $e_0 = \sum_k e^{t\lambda_k}a_k\varphi_k$, so
 \begin{equation}\label{eq:modes}   \int e(x,t)^2\,d\pi = \sum_k a_k^2,   \qquad   \int \mathbb E\big[e_0(X^x_t)^2\big]\,d\pi(x) = \sum_k e^{2t\lambda_k}a_k^2 .
 \end{equation}
-The first is the point loss and the second the full $R_\mathrm{sig}$. The truncated operator satisfies $I = \mathcal M_0 \preceq \mathcal M_N \preceq \mathcal M_\infty = e^{-2t\mathcal L}$. For heat it is the multiplier $w_N(\lambda) = \sum_{n\le N}(2t\lambda)^n/n!$, with $\lambda = \nu|\xi|^2$ at frequency $\xi$ ($\lambda=\sum_i\nu_i\xi_i^2$ for anisotropic heat). Relative to $R_\mathrm{sig}$, the point loss down-weights mode $k$ by $e^{-2t\lambda_k}$: an initial-data error $c_k$ enters the point loss only as $e^{-2t\lambda_k}c_k^2$, and $R_\mathrm{sig}$ restores the full weight. Suppose, as an idealisation, that $K$ shares the modes of $\mathcal L$ with eigenvalues $g(\lambda_k)$. For heat, mode $k$ then converges at rate $g(\lambda_k)\,w_N(\lambda_k)$ rather than $g(\lambda_k)$. In general $\mathcal M_N$ is not diagonal in $\varphi_k$, and only the untruncated rate $g(\lambda_k)\,e^{2t\lambda_k}$ holds. Under spectral bias $g$ decreases with roughness \cite{rahaman2019spectral}, while $w_N$ increases. Since $w_N$ depends on the collocation time $t$, the following holds per time slice. If $g\,w_N$ stays non-increasing on the trained band $\lambda\le\lambda_{\max}$,
+The first is the point loss and the second the full $R_\mathrm{sig}$. The truncated operator satisfies $I = \mathcal M_0 \preceq \mathcal M_N \preceq \mathcal M_\infty = e^{-2t\mathcal L}$. For heat it is the multiplier $w_N(\lambda) = \sum_{n\le N}(2t\lambda)^n/n!$, with $\lambda = \nu|\xi|^2$ at frequency $\xi$ ($\lambda=\sum_i\nu_i\xi_i^2$ for anisotropic heat). Relative to $R_\mathrm{sig}$, the point loss down-weights mode $k$ by $e^{-2t\lambda_k}$: an initial-data error $c_k$ enters the point loss only as $e^{-2t\lambda_k}c_k^2$, and $R_\mathrm{sig}$ restores the full weight. Suppose, as an idealisation, that $K$ shares the modes of $\mathcal L$ with eigenvalues $g(\lambda_k)$. For heat, mode $k$ then converges at rate $g(\lambda_k)\,w_N(\lambda_k)$ rather than $g(\lambda_k)$. In general $\mathcal M_N$ is not diagonal in $\varphi_k$, and only the untruncated rate $g(\lambda_k)\,e^{2t\lambda_k}$ holds. Under spectral bias $g$ decreases with roughness \cite{rahaman2019spectral,wang2022ntk}, while $w_N$ increases. Since $w_N$ depends on the collocation time $t$, the following holds per time slice. If $g\,w_N$ stays non-increasing on the trained band $\lambda\le\lambda_{\max}$,
 \begin{equation}\label{eq:kappa}
 \kappa(K\mathcal M_N) = \frac{\kappa(K)}{w_N(\lambda_{\max})} .
 \end{equation}
 If $w_N$ grows faster than $g$ decays, $g\,w_N$ turns upward and large $N$ worsens $\kappa$. The truncation level is therefore the order of the preconditioner. Whether a finite $N$ lowers $\kappa$ for a real network is an empirical question.
 
 \subsection{Monte Carlo estimator}\label{sec:estimator}
-At an FK point $(x,t)$, path $i=1,\dots,M$ gives the payoff $Y_i$, the features $\Phi^{(i)}_w$ and the model payoff $Y^\theta_i$, whose It\^o integral is replaced by its Euler sum. With $a_{w,i} := (Y^\theta_i - Y_i)\Phi^{(i)}_w/\langle\hat p_w,\hat p_w\rangle$,
+At an FK point $(x,t)$, path $i=1,\dots,M$ gives the payoff $Y_i$, the features $\Phi^{(i)}_w$ and the model payoff $Y^\theta_i$, whose It\^o integral is replaced by its Euler sum \cite{kloeden1992numerical}. With $a_{w,i} := (Y^\theta_i - Y_i)\Phi^{(i)}_w/\langle\hat p_w,\hat p_w\rangle$,
 \begin{equation}\label{eq:est}
   \widehat{\delta\beta}_w = \frac1M\sum_{i=1}^M a_{w,i},
   \qquad
@@ -135,14 +135,14 @@ At an FK point $(x,t)$, path $i=1,\dots,M$ gives the payoff $Y_i$, the features 
   \qquad
   \mathbb E\big[\hat R_\mathrm{sig}\big] = R_\mathrm{sig} + \frac1M\sum_{w\in W_N}\langle\hat p_w,\hat p_w\rangle\,\mathrm{Var}(a_w).
 \end{equation}
-The plug-in square of the Monte Carlo mean is therefore biased upwards by $\mathrm{Var}/M$. At the solution $Y^\theta_i = Y_i$ on every path, up to time discretisation, so $a_{w,i}=0$ and the bias vanishes there. This same-path cancellation is what removes the label noise. Where it is incomplete (the subsampled arms below), we use the U-statistic $\sum_w\langle\hat p_w,\hat p_w\rangle\,\frac{1}{M(M-1)}\sum_{i\neq j}a_{w,i}a_{w,j}$, which is unbiased for $R_\mathrm{sig}$ at every $\theta$.
+The plug-in square of the Monte Carlo mean is therefore biased upwards by $\mathrm{Var}/M$. At the solution $Y^\theta_i = Y_i$ on every path, up to time discretisation, so $a_{w,i}=0$ and the bias vanishes there. This same-path cancellation is what removes the label noise \cite{newton1994variance}. Where it is incomplete (the subsampled arms below), we use the U-statistic \cite{hoeffding1948class} $\sum_w\langle\hat p_w,\hat p_w\rangle\,\frac{1}{M(M-1)}\sum_{i\neq j}a_{w,i}a_{w,j}$, which is unbiased for $R_\mathrm{sig}$ at every $\theta$.
 
 \subsection{Subsampling}
  $Y^\theta_i$ needs $\nabla_\sigma u_\theta$ at all $n_s = t/\Delta t$ steps of every path. At the settings of \cite{tepakbong2026taming} ($M=500$, $\Delta t=10^{-3}$, about 200 FK points) that is about $10^8$ network-gradient evaluations per optimiser step. B and E therefore draw, at each step, (i) $B_x$ FK points uniformly, (ii) $M'$ of the $M$ stored paths per point without replacement, and (iii) one step $r_j$ uniformly in each of $J$ blocks of $m = n_s/J$ steps, with block starts $0 = s_1 < \dots < s_J$ and $s_{J+1} := t$. With $g(s) := \nabla_\sigma u_\theta(X_s, t-s)$,
 \begin{equation}\label{eq:subsample}
   \hat Y^\theta_i = u_\theta(x,t) + \sum_{j=1}^J\Big[g(s_j)\cdot\big(W_{s_{j+1}} - W_{s_j}\big) + m\,\big(g(r_j) - g(s_j)\big)\cdot\Delta W_{r_j}\Big].
 \end{equation}
-The first term is the coarse It\^o sum and the second a Horvitz--Thompson correction, so $\mathbb E[\hat Y^\theta_i\mid\text{path}]$ is the full Euler sum. Every $\widehat{\delta\beta}_w$ therefore stays unbiased, and with the U-statistic so does the estimate of $R_\mathrm{sig}$. For E, two independent draws of the $r_j$ give the unbiased product $(\hat Y^{\theta,1}_i - Y_i)(\hat Y^{\theta,2}_i - Y_i)$ in place of the square. The $r_j$ are drawn once per path at simulation time, so only $2J$ states and increments per path are stored. The cost is $2JB_xM'$ gradient evaluations per step, about $6.6\times10^4$ at the defaults $B_x=32$, $M'=64$, $J=16$, comparable to the residual loss on $10^4$ collocation points. The price is that the same-path cancellation becomes approximate. At the solution the residual is the zero-mean correction error, of variance $\approx\frac12\,m\,(m\Delta t)\int_0^t\mathbb E\|\sigma^\top\nabla^2u\,\sigma\|_F^2\,ds$ for constant $\sigma$, instead of zero. This adds gradient noise but no bias.
+The first term is the coarse It\^o sum and the second a Horvitz--Thompson correction \cite{horvitz1952generalization}, so $\mathbb E[\hat Y^\theta_i\mid\text{path}]$ is the full Euler sum. Every $\widehat{\delta\beta}_w$ therefore stays unbiased, and with the U-statistic so does the estimate of $R_\mathrm{sig}$. For E, two independent draws of the $r_j$ give the unbiased product $(\hat Y^{\theta,1}_i - Y_i)(\hat Y^{\theta,2}_i - Y_i)$ in place of the square. The $r_j$ are drawn once per path at simulation time, so only $2J$ states and increments per path are stored. The cost is $2JB_xM'$ gradient evaluations per step, about $6.6\times10^4$ at the defaults $B_x=32$, $M'=64$, $J=16$, comparable to the residual loss on $10^4$ collocation points. The price is that the same-path cancellation becomes approximate. At the solution the residual is the zero-mean correction error, of variance $\approx\frac12\,m\,(m\Delta t)\int_0^t\mathbb E\|\sigma^\top\nabla^2u\,\sigma\|_F^2\,ds$ for constant $\sigma$, instead of zero. This adds gradient noise but no bias.
 \newpage
 \subsection{Computational cost}
 
@@ -154,7 +154,7 @@ The first term is the coarse It\^o sum and the second a Horvitz--Thompson correc
 \end{itemize}
 
 \subsection{Prior work and Novelty}
-Supervising a network's derivatives is Sobolev training \cite{czarnecki2017sobolev}, and Sobolev norms as loss metrics accelerate gradient descent on PDE problems \cite{lu2022sobolev}; the heuristic of Section~\ref{sec:setting} follows these. Differential machine learning \cite{huge2020differential} regresses on pathwise derivatives of Monte Carlo payoffs, which is essentially arm C. FBSNN \cite{raissi2018fbsnn} and deep BSDE solvers \cite{han2018deepbsde} fit the martingale representation of $Y$ path by path, which is essentially arm F. The novelty of this project is threefold. Derivative labels come from the orthogonal signature coefficients of the FK payoff on the paths already simulated, with level weights fixed by Parseval rather than tuned. The truncation level acts as an operator preconditioner between the point loss ($\mathcal M_0 = I$) and the full path loss ($\mathcal M_\infty = e^{-2t\mathcal L}$), with a quantitative prediction for $\kappa$. The same-path estimator also cancels the label noise at the solution.
+Supervising a network's derivatives is Sobolev training \cite{czarnecki2017sobolev}, and Sobolev norms as loss metrics accelerate gradient descent on PDE problems \cite{lu2022sobolev,son2021sobolev}; the heuristic of Section~\ref{sec:setting} follows these. Differential machine learning \cite{huge2020differential} regresses on pathwise derivatives of Monte Carlo payoffs, which is essentially arm C. FBSNN \cite{raissi2018fbsnn} and deep BSDE solvers \cite{han2018deepbsde} fit the martingale representation of $Y$ path by path, which is essentially arm F. The novelty of this project is threefold. Derivative labels come from the orthogonal signature coefficients of the FK payoff on the paths already simulated, with level weights fixed by Parseval rather than tuned. The truncation level acts as an operator preconditioner \cite{deryck2024operator} between the point loss ($\mathcal M_0 = I$) and the full path loss ($\mathcal M_\infty = e^{-2t\mathcal L}$), with a quantitative prediction for $\kappa$. The same-path estimator also cancels the label noise at the solution.
 
 \section{Experiments}
 This phase tests two key hypotheses in two stages. \ref{h:cond} is a cheap gate that needs only local derivatives. \ref{h:estimator} needs the path machinery of Section~\ref{sec:estimator}, and runs only if \ref{h:cond} holds. Section~\ref{sec:further} lists the hypotheses and experiments for later phases.
@@ -335,6 +335,66 @@ D.~Nualart.
 E.~Gobet.
 \newblock Weak approximation of killed diffusion using {E}uler schemes.
 \newblock \emph{Stochastic Processes and their Applications}, 87(2):167--197, 2000.
+
+\bibitem{chevyrev2016primer}
+I.~Chevyrev and A.~Kormilitzin.
+\newblock A primer on the signature method in machine learning.
+\newblock arXiv:1603.03788, 2016.
+
+\bibitem{lyons2024signature}
+T.~Lyons and A.~D. McLeod.
+\newblock Signature methods in machine learning.
+\newblock arXiv:2206.14674, 2024.
+
+\bibitem{fournie1999applications}
+E.~Fourni\'e, J.-M. Lasry, J.~Lebuchoux, P.-L. Lions, and N.~Touzi.
+\newblock Applications of {M}alliavin calculus to {M}onte {C}arlo methods in finance.
+\newblock \emph{Finance and Stochastics}, 3(4):391--412, 1999.
+
+\bibitem{pardoux1990adapted}
+E.~Pardoux and S.~Peng.
+\newblock Adapted solution of a backward stochastic differential equation.
+\newblock \emph{Systems \& Control Letters}, 14(1):55--61, 1990.
+
+\bibitem{wang2022ntk}
+S.~Wang, X.~Yu, and P.~Perdikaris.
+\newblock When and why {PINN}s fail to train: A neural tangent kernel perspective.
+\newblock \emph{Journal of Computational Physics}, 449:110768, 2022.
+
+\bibitem{kloeden1992numerical}
+P.~E. Kloeden and E.~Platen.
+\newblock \emph{Numerical Solution of Stochastic Differential Equations}.
+\newblock Springer, 1992.
+
+\bibitem{newton1994variance}
+N.~J. Newton.
+\newblock Variance reduction for simulated diffusions.
+\newblock \emph{SIAM Journal on Applied Mathematics}, 54(6):1780--1805, 1994.
+
+\bibitem{hoeffding1948class}
+W.~Hoeffding.
+\newblock A class of statistics with asymptotically normal distribution.
+\newblock \emph{Annals of Mathematical Statistics}, 19(3):293--325, 1948.
+
+\bibitem{horvitz1952generalization}
+D.~G. Horvitz and D.~J. Thompson.
+\newblock A generalization of sampling without replacement from a finite universe.
+\newblock \emph{Journal of the American Statistical Association}, 47(260):663--685, 1952.
+
+\bibitem{son2021sobolev}
+H.~Son, J.~W. Jang, W.~J. Han, and H.~J. Hwang.
+\newblock Sobolev training for physics informed neural networks.
+\newblock arXiv:2101.08932, 2021.
+
+\bibitem{oksendal2003sde}
+B.~{\O}ksendal.
+\newblock \emph{Stochastic Differential Equations: An Introduction with Applications}.
+\newblock Springer, 6th edition, 2003.
+
+\bibitem{karatzas1991brownian}
+I.~Karatzas and S.~E. Shreve.
+\newblock \emph{Brownian Motion and Stochastic Calculus}.
+\newblock Springer, 2nd edition, 1991.
 
 \end{thebibliography}
 \newpage
