@@ -72,7 +72,7 @@ Y = \sum_w \beta_w \Phi_w, \qquad \beta_w = \frac{\mathbb{E}[Y\Phi_w]}{\langle \
 - On Markov problems the coefficients recover the derivatives of $`u`$ up to known constants, so the hierarchy supplies the derivative labels that Sobolev supervision needs.
 - Parseval's identity fixes a weight for each level, so the per-level loss weights need no hand-tuning.
 
-### The loss term
+### Signature-based loss term
 
 The new loss term is the model's residual in chaos space, over all words $`W_N`$ up to length $`N`$:
 
