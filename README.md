@@ -129,50 +129,7 @@ If $`w_N`$ grows faster than $`g`$ decays, $`g\thinspace w_N`$ turns upward and 
 
 The full proposal is in [experiments_proposals/sighierarchyfkpinn.tex](experiments_proposals/sighierarchyfkpinn.tex).
 
-### Hypotheses
-
-- **H1. Path supervision conditions training.** With noise-free targets, adding $`R_\mathrm{sig}`$ to the FK loss lowers $`\kappa(K\mathcal{M})`$ and the error at matched steps. The gain grows with $`w_N(\lambda_{\max})`$, that is with the roughness of $`u`$, the horizon $`t`$ and the level $`N`$, until $`g\thinspace w_N`$ turns upward. *Test:* D against A\*, swept over frequency, $`t`$ and $`N`$. *Falsifier:* D ≈ A\* at the highest frequency, or a measured $`\kappa`$ ratio that does not grow with $`w_N(\lambda_{\max})`$.
-- **H2. Parseval weights.** The Parseval weights match the best per-level weights found by tuning. *Test:* D against D′ at equal tuning budget. *Falsifier:* D′ beats D beyond seed noise. The weights then save tuning but carry no further benefit.
-- **H3. Monte Carlo targets keep the gain.** Estimated on the same paths as $`Y^\theta`$, Monte Carlo targets retain most of the noise-free gain. *Test:* B against D, and B against $`\mathrm{B}_\mathrm{off}`$. *Falsifier:* B ≈ A0. A gap B > $`\mathrm{B}_\mathrm{off}`$ confirms that the same-path cancellation removes the label noise.
-- **H4. Signature-specific value.** The signature estimator beats estimators that supply the same information without signatures. *Test:* B against C (pathwise derivatives) and against F (the untruncated path residual). *Falsifier:* B ≈ C and B ≤ F on every benchmark. The contribution is then the preconditioner interpretation and its weights, not the signature estimator.
-
-Arm E is the control for all four. If E ≈ B, the gain comes from regularisation rather than information.
-
-### Arms
-
-| Arm | Added loss term | Targets | Tests |
-|---|---|---|---|
-| P | None (residual and boundary terms only) | – | Context: Table 1 of Tepakbong et al. (2026) |
-| A0 | FK point loss | Monte Carlo point labels | Published baseline |
-| A\* | FK point loss | Exact point labels | Reference for H1 |
-| D | $`R_\mathrm{sig}`$, $`N\in\lbrace 1,2,3\rbrace`$ | Exact derivatives (heat, OU); large-$`M`$ reference otherwise | H1; gate for the rest |
-| D′ | Derivative loss, tuned $`\lambda_n`$ | Exact derivatives | H2 |
-| B | $`R_\mathrm{sig}`$ | Monte Carlo, from $`Y^\theta - Y`$ on the same paths | Method under test; H3, H4 |
-| $`\mathrm{B}_\mathrm{off}`$ | $`R_\mathrm{sig}`$ | Monte Carlo, $`\hat\beta_w`$ precomputed offline | H3 |
-| C | Derivative loss, Parseval weights | Monte Carlo pathwise derivatives $`\nabla^n u_0(X_t)`$ with the flow Jacobian | H4 |
-| F | $`\mathbb{E}[(Y^\theta - Y)^2]`$, untruncated | Monte Carlo, same paths | H4; FBSNN-type (Raissi, 2018) |
-| E | As B | B's targets permuted across $`x`$ within $`t`$-bins | Control |
-
-### Benchmarks
-
-The benchmarks are ordered by how far they depart from the setting of the theory: an endpoint payoff, a fixed horizon, and a generator that commutes with $`\nabla_\sigma`$. Each one tests a specific claim.
-
-| Benchmark | Why | Tests | Arms |
-|---|---|---|---|
-| Heat, $`d=1`$, $`u_0=\sin(\pi x)`$ | Closed-form check of the hierarchy and of Stroock's identity. A unit test, not evidence. | – | All |
-| Anisotropic heat, $`d\in\lbrace 2,5,10\rbrace`$ | Per-letter weights $`2\nu_i t\thinspace\xi_i^2`$, and noise growth with the number of words | H1, H3 | All |
-| Ornstein–Uhlenbeck, $`d\in\lbrace 1,2,5\rbrace`$ | Linear drift. Time-letter words are non-zero, so the time truncation matters. Closed form via Mehler. | H1, H4 | All |
-| Manufactured parabolic, $`u^*=\sin\pi x+\varepsilon\sin k\pi x`$, $`k\in\lbrace 1,4,16\rbrace`$ | Direct test of the predicted scaling of the gain with $`w_N(\lambda_{\max})`$ | H1, H2 | All |
-| Poisson (Tepakbong et al., 2026) | Comparability with the incumbent. Elliptic, so there is no fixed horizon and the Parseval weights are undefined. | H1 | P, A0, A\*, D′ |
-| Mean exit time and committor (Tepakbong et al., 2026) | Stopped payoffs and boundary layers. The committor payoff is discontinuous, so pathwise derivatives (arm C) do not exist. | H4 | P, A0, A\*; B after the stopped-path extension |
-
-For the parabolic benchmarks, $`\nu`$ and $`T`$ are chosen with $`2\nu T\pi^2k^2 \gtrsim 1`$. Otherwise $`w_N \approx 1`$ and no effect can appear. $`w_N(\lambda_{\max})`$ is reported for each benchmark, so that the prediction of H1 is quantitative.
-
-## Also under investigation: signature control variates
-
-The FK label is a Monte Carlo average, so its noise limits how much FK supervision can help. Some coordinates of the driver's Itô signature have expectations known in closed form. For example, a word ending in a Brownian letter gives a stopped Itô integral, which has mean zero when the stopping time is bounded. These coordinates come for free with the paths already simulated and can be correlated with the path payoff, which makes them candidate control variates: they could reduce the variance of the FK label without simulating more paths. How much variance they remove, and how they interact with the signature-hierarchy loss, is being studied.
-
-## Status
+## Status/TODO
 
 - [x] PINN and FK-PINN baselines (arms P and A0): parabolic problems (heat, advection–diffusion–reaction) and the four elliptic benchmarks of Tepakbong et al. (2026) (Poisson, Schrödinger, mean exit time, committor)
 - [x] Euler–Maruyama FK path generation, for fixed horizons and exit times
