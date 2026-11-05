@@ -1,0 +1,50 @@
+[project]
+name = "pathenhancedfkpinn"
+version = "0.1.0"
+description = "Path-signature residual loss for Feynman-Kac supervised PINNs (JAX)."
+authors = [{ name = "Federico Ganzer" }]
+requires-python = ">=3.11,<3.14"
+readme = "README.md"
+# Exact pins: every run records these versions in env.json.
+# jax 0.10.2 is the latest release on PyPI.
+dependencies = [
+    "jax==0.10.2",
+    "jaxlib==0.10.2",
+    "equinox==0.13.8",
+    "optax==0.2.8",
+    "signax==0.2.1",
+    "numpy>=2.0",
+    "scipy>=1.13",
+    "scikit-fem==12.0.2",
+    "matplotlib>=3.8",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# GPU wheels are Linux only. Install one of these on the cluster, never both.
+cuda13 = ["jax[cuda13]==0.10.2"]
+cuda12 = ["jax[cuda12]==0.10.2"]
+# Signature cross-check reference. C++ build; Linux (cluster) only.
+validate = ["iisignature==0.24; sys_platform == 'linux'"]
+
+[dependency-groups]
+dev = ["pytest>=8", "ipykernel"]
+
+[tool.uv]
+conflicts = [[{ extra = "cuda12" }, { extra = "cuda13" }]]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pathenhancedfkpinn"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "slow: large Monte Carlo tests (minutes on CPU); run with -m slow",
+    "gpu: needs a CUDA device (cluster only)",
+    "legacy: needs reference JSON produced by the frozen PyTorch code",
+]
