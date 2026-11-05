@@ -1,4 +1,4 @@
-"""Exact Ito inner products and the orthogonal signature basis (unit test U1).
+"""Exact Ito inner products and the orthogonal signature basis.
 
 Letters: 0 = time, 1..d = Brownian coordinates. Time-augmented Brownian path W_hat_s = (s, W_s).
 

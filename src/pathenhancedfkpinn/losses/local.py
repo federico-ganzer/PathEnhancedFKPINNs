@@ -7,7 +7,7 @@ Arm D': labels exact, tuned weights: family "const" w_n = lambda_n, family "tpow
 Arm C : labels = MC pathwise derivatives (fkdata.pathwise_labels), level 0 = ybar,
         Parseval weights of the driving noise (problem.tau if defined, else sigma^2 t).
 
-Derivative tensors use nested forward mode (jax.jacfwd), not jet, so U15 does not gate them.
+Derivative tensors use nested forward mode (jax.jacfwd), not jet, so the jet test does not gate them.
 """
 
 from __future__ import annotations

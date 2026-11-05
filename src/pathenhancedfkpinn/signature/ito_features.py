@@ -3,7 +3,7 @@
 Left-point Ito recursion on the simulation grid:   S^{va}_{k+1} = S^{va}_k + S^v_k dW_hat^a_k,
 which is the tensor-algebra product  S_{k+1} = S_k (x) (1 + dW_hat_k).
 
-Two backends give identical numbers (unit test U18):
+Two backends give identical numbers (tests/test_signax.py):
 - "signax": dense recursion with `signax.tensor_ops.addcmul` on all (d+1)^k words up to `depth`,
   then the closure words are gathered. Default while the dense size is moderate.
 - "sparse": gather recursion over the prefix closure only. Needed for large d

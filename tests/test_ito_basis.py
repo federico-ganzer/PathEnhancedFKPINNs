@@ -1,4 +1,4 @@
-"""U1: exact Ito Gram and orthogonal basis."""
+"""Exact Ito Gram and orthogonal basis."""
 
 from fractions import Fraction
 

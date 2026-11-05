@@ -1,4 +1,4 @@
-"""U18: Signax-based Ito features vs the sparse recursion, Signax layout, legacy Stratonovich
+"""Signax-based Ito features vs the sparse recursion, Signax layout, legacy Stratonovich
 reference, and the exact discrete Ito-Stratonovich identity."""
 
 import json
@@ -19,7 +19,7 @@ from pathenhancedfkpinn.signature import (
     word_tables,
 )
 
-REF = Path(__file__).resolve().parents[1] / "legacy" / "torch" / "reference" / "u18_strat_signature.json"
+REF = Path(__file__).resolve().parents[1] / "legacy" / "torch" / "reference" / "strat_signature.json"
 
 
 def _increments(d, n=300, M=32, dt=1e-3, seed=0):
@@ -58,7 +58,7 @@ def test_dense_index_matches_signax_layout(d, depth):
 
 def test_stratonovich_matches_legacy_torch():
     if not REF.exists():
-        pytest.skip("run legacy/torch/scripts/make_u18_reference.py first")
+        pytest.skip("run legacy/torch/scripts/make_strat_reference.py first")
     ref = json.loads(REF.read_text())
     path = jnp.asarray(ref["path"], jnp.float64)
     sig = stratonovich_signature(path, ref["depth"])

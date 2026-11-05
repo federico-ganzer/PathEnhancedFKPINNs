@@ -3,7 +3,7 @@
 - First derivatives and Hessian-vector products: jax.grad, jvp-of-grad.
 - Higher directional derivatives: Taylor mode, `jax.experimental.jet`. The input series
   (v, 0, ...) returns f'(x)[v], f''(x)[v,v], ... in derivative convention (not divided by
-  factorials). `jet` is experimental: unit test U15 must pass before any arm uses it.
+  factorials). `jet` is experimental: tests/test_jet.py must pass before any arm uses it.
 - Laplacian: exact (sum over coordinates) for d <= 10; Hutchinson with Rademacher probes for
   large d, in arm P only (say so in results).
 """
