@@ -156,21 +156,19 @@ def pathwise_labels(problem, x_fk, t_fk, *, seed: int, M: int, dt: float, n_orde
 
     Differentiates the Euler map x -> (X_k) -> Y with nested forward mode, on the same paths as
     `precompute` (same keys). This is the flow-Jacobian pathwise derivative of the discrete
-    scheme; for indicator data it is 0 almost surely (intended: tests M3).
+    scheme; for indicator data it is 0 almost surely.
     Returns [g_1 (P, d), g_2 (P, d, d), ...]."""  # fmt: skip
     n_max = int(ceil(problem.T / dt - 1e-9))
     d = x_fk.shape[1]
 
     def payoff_of_x(x0, t, i):
         s_grid, _ = point_grid(t, dt, n_max, mesh)
-        ds = jnp.diff(s_grid)
 
         def acc_f(acc, X, s, dsk, dW):
             return acc + jax.vmap(problem.f)(X) * dsk
 
         XT, run, _ = euler_scan(_drift_fn(problem), problem.sigma(), x0, s_grid, derive(seed, "paths", i), M,
                                 accumulate=acc_f, acc0=jnp.zeros(M, jnp.float64), block=block)  # fmt: skip
-        del ds
         return jnp.mean(jax.vmap(problem.u0)(XT) + run)
 
     labels = []
