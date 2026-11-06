@@ -1,0 +1,11 @@
+# Copy to slurm/cluster.yaml (gitignored) on the cluster login node and fill in.
+# Values below are placeholders: check your allocation and partition names first.
+account: YOUR-SLURM-ACCOUNT
+partition: YOUR-GPU-PARTITION
+gpus: 1
+repo: /path/to/IIB_Project          # checkout on the cluster
+log_dir: slurm/logs
+cuda_extra: cuda13                  # fall back to cuda12 if scripts/check_gpu.py fails with cuda13
+modules: []                         # e.g. ["rhel8/default-amp"] if the site needs one
+extra_sbatch: []                    # e.g. ["#SBATCH --qos=..."]
+default_walltime: "02:00:00"        # used unless submit.py --walltime is given

@@ -1,0 +1,17 @@
+#!/bin/bash
+# U17 GPU check (unit test). Fill account/partition, then: sbatch <this file>
+#SBATCH --job-name=u17_gpu_check
+#SBATCH --account=YOUR-SLURM-ACCOUNT
+#SBATCH --partition=YOUR-GPU-PARTITION
+#SBATCH --gres=gpu:1
+#SBATCH --time=00:15:00
+#SBATCH --output=slurm/logs/%x_%j.out
+set -euo pipefail
+cd /path/to/IIB_Project
+mkdir -p results
+uv sync --frozen --extra cuda13
+uv run --frozen --extra cuda13 python scripts/check_gpu.py --out results/u17_env_cuda13.txt || {
+  echo "cuda13 failed; trying cuda12"
+  uv sync --frozen --extra cuda12
+  uv run --frozen --extra cuda12 python scripts/check_gpu.py --out results/u17_env_cuda12.txt
+}
