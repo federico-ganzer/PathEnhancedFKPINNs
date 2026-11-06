@@ -1,0 +1,12 @@
+# Preliminary result set on the manufactured benchmark (layer on top of base.yaml).
+#   u* = sin(pi x) + 0.1 sin(k pi x), static_source variant (OPEN-5 provisional default), T = 1.
+#   Set 1, noise-free: Astar vs D (N = 2) at k = 1, 4 here; k = 16 from prelim_k16.yaml (Astar and D
+#   use no paths in training) -> kappa ratio vs w_N, error vs steps.
+#   Set 2, MC labels at k = 4: A0, B (N = 0), B (N = 2), swept over M = 125, 500, 2000 -> error vs M.
+#   Context: P at k = 4. Submission: slurm/prelim.sh.
+# All arms share this file, so they differ only in the data term (and M where swept).
+problem: {name: manufactured, d: 1, nu: 0.05, k: 4, eps: 0.1, T: 1.0, variant: static_source}
+arm_opts: {N: 2, N0: 2, estimator: ustat, J: null}   # J null = full Euler sums (D0 passes; HT fails on heat)
+data: {M: 500, dt: 1.0e-3, mesh: uniform}
+# Loss weights: placeholder. Replace with the pick of the Astar tuning grid (step 1), then freeze.
+weights: {res: 1.0, bc: 1.0, data: 1.0}

@@ -1,0 +1,5 @@
+# Layer on top of base.yaml + manufactured/prelim.yaml: k = 16, the high-w_N end (w_2 = 3.2e4 at t = T).
+# dt = 2.5e-4 because D0 at k = 16 fails at dt = 1e-3 (median std(R)/std(Y) 0.312) and passes at
+# 2.5e-4 (0.153). Every arm uses the same simulator. M stays 500: stored paths are 4x longer.
+problem: {k: 16}
+data: {dt: 2.5e-4}
