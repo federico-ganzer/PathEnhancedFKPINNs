@@ -23,6 +23,7 @@ PURPOSES: dict[str, int] = {
     "train": 7,  # per-step minibatch draws during training
     "ic": 8,  # initial-condition points
     "bc": 9,  # boundary points
+    "energy_paths": 10,  # evaluation paths for per-word error energies
     "test": 100,  # unit tests
 }
 
