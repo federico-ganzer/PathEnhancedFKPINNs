@@ -1,0 +1,2 @@
+# Heat d = 1 unit run: d_t u = nu u_xx, nu = 0.05, u0 = sin(pi x), [-1, 1], T = 1.
+problem: {name: heat, d: 1, nu: 0.05, k: 1.0, T: 1.0}
