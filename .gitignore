@@ -1,8 +1,44 @@
 .venv
+.venv-*
 .vscode
 
 to_read
 
 notebooks/00_sanity.ipynb
 notebooks/01_paper_benchmarks.ipynb
+notes/
 
+# Agents
+.claude
+
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
+# Run outputs: raw run dirs and caches stay out of git.
+# Cards, reports, prereg, summaries and figures are tracked.
+results/**
+!results/**/
+!results/**/summary.csv
+cache/
+slurm/logs/
+
+# LaTeX build files
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.synctex.gz
+paper/*.bbl
+paper/*.blg
+
+# Cluster-local
+slurm/cluster.yaml
+slurm/jobs/
+
+# Legacy torch library: local copy only (full history under tag torch-final)
+legacy/torch/

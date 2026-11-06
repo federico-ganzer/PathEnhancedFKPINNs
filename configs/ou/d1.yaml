@@ -1,0 +1,3 @@
+# OU d = 1 (OPEN-7 provisional defaults): a = 1, nu = 0.05, box [-1.5, 1.5].
+problem: {name: ou, d: 1, a: 1.0, nu: 0.05, T: 1.0}
+arm_opts: {N0: 2}

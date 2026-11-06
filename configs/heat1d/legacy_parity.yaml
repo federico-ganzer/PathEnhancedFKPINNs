@@ -1,0 +1,8 @@
+# Parity with legacy notebook 00 §3 (PINN arm on 1D heat). Not the Stage-1 protocol.
+problem: {name: heat, d: 1, nu: 0.1, k: 1.0, T: 1.0}
+net: {width: 64, depth: 4, activation: tanh, init: xavier_normal, scale_inputs: false}
+optim: {steps: 1500, lr: 2.0e-3, schedule: const}
+data: {resample: true}
+batch: {n_res: 256, n_ic: 64, n_bc: 64}
+eval: {n_eval: 2048, every: 50}
+log: {every: 50, ckpt_every: 500}

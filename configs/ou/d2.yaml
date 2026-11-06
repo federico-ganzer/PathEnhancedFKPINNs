@@ -1,0 +1,2 @@
+# OU d = 2 (OPEN-7 provisional defaults).
+problem: {name: ou, d: 2, a: 1.0, nu: 0.05, T: 1.0}

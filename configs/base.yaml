@@ -1,0 +1,32 @@
+# Base protocol. Every run = this file + benchmark layers + command-line overrides (--set, --grid).
+# Values marked provisional depend on open items.
+seed: 0
+arm: P                      # P | Astar | A0 | B | Boff | C | D | Dprime | E
+problem: {name: heat, d: 1, nu: 0.05, k: 1.0, T: 1.0}
+arm_opts:
+  N: 2                      # signature level (B, Boff) / derivative order (C, D, Dprime)
+  N0: 2                     # max time letters
+  estimator: ustat          # ustat (default, unbiased) | plugin (ablation only)
+  sig_backend: auto         # auto | signax | sparse (identical numbers, tests/test_signax.py)
+  J: null                   # HT blocks; null = full Euler sums
+net: {width: 128, depth: 4, activation: tanh, init: xavier_normal, scale_inputs: true}
+optim: {steps: 30000, lr: 1.0e-3, lr_final: 1.0e-6, schedule: exp}
+data:
+  n_coll: 10000
+  p_data: 0.02              # -> 200 FK points
+  n_ic: 400                 # provisional: draft says 400 IC points; box-face BC count not stated
+  n_bc: 400
+  M: 500
+  dt: 1.0e-3
+  mesh: uniform             # uniform | graded
+  resample: false           # true = fresh collocation per step (legacy notebook protocol)
+  path_block: 100           # paths per RNG block (regenerable unit)
+batch: {B_x: 32, M_prime: 64, n_res: null, n_ic: null, n_bc: null, path_chunk: null}
+weights: {res: 1.0, bc: 1.0, data: 1.0}   # tuned once per benchmark on Astar, then frozen
+eval: {n_eval: 4096, every: 1000, seed: 12345}
+kappa: {steps: [0, 1000, 10000, final], n_c: null, M: 64, slices: [0.25, 0.5, 1.0], cutoff: 1.0e-8}  # slices: fractions of T
+# Per-word error energies at eval checkpoints, against the exact solution (n_points 0 = off).
+# n_points FK points, M evaluation paths each; M must be a multiple of path_chunk.
+energies: {n_points: 16, M: 256, path_chunk: 32}
+log: {every: 100, ckpt_every: 2000}
+budget: {est_seconds: null}
