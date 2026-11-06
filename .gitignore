@@ -6,6 +6,7 @@ to_read
 
 notebooks/00_sanity.ipynb
 notebooks/01_paper_benchmarks.ipynb
+notes/
 
 # Agents
 .claude
