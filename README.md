@@ -16,10 +16,10 @@ The simulated paths behind each FK label also carry noisy but unbiased informati
 The code is a JAX implementation (Equinox, Optax, Signax).
 
 <p align="center">
-  <img src="figures/presentations/nb00_architecture.png" alt="Training loss: PINN residual, FK supervision and a signature-based term" width="95%">
+  <img src="figures/presentations/nb00_architecture.png" alt="Training loss: PINN residual, FK point loss and the path-signature residual R_sig" width="95%">
 </p>
 
-**Figure 1.** The training loss. Top: the standard PINN residual, computed by automatic differentiation. Middle: FK supervision, which regresses $`u_\theta`$ onto a Monte Carlo average over SDE paths. Bottom: the question this project works on, which is how to combine the signatures $`S(\hat X)`$ of the same paths with $`u_\theta`$ to form a further loss term.
+**Figure 1.** The training loss. Top: the PINN residual, computed by automatic differentiation. Middle: the FK-PINN data term, which regresses $`u_\theta`$ onto the Monte Carlo average $`\bar u`$ of the path payoffs. Bottom: this project's data term, $`R_\mathrm{sig}`$. On every path the network gives a model payoff $`Y^\theta_m`$; its residual against the data payoff $`Y_m`$ is projected onto orthogonal signature features $`\Phi_w`$ computed once, offline. $`R_\mathrm{sig}`$ replaces the FK point loss, which is its empty-word term.
 
 ## Problem setting
 
@@ -163,7 +163,7 @@ src/pathenhancedfkpinn/
   keys.py          counter-based random keys
   precision.py     float64 / float32 policy
 configs/           base.yaml and per-benchmark layers
-scripts/           run.py, submit.py (Slurm), diagnostics.py, check_gpu.py
+scripts/           run.py, submit.py (Slurm), diagnostics.py, check_gpu.py, presentation_figures.py
 slurm/             sbatch template and example cluster config
 tests/             fast and slow (full Monte Carlo size) test suites
 experiments_proposals/   experiment proposal (LaTeX)
