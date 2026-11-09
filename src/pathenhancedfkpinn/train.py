@@ -37,7 +37,7 @@ import yaml
 
 from pathenhancedfkpinn import fkdata, metrics
 from pathenhancedfkpinn.config import ROOT, config_hash
-from pathenhancedfkpinn.diagnostics.gn_spectrum import condition_from_spectrum, gn_spectrum
+from pathenhancedfkpinn.diagnostics.gn_spectrum import Blocks, condition_from_spectrum, gn_spectrum, gn_spectrum_blocks
 from pathenhancedfkpinn.keys import derive
 from pathenhancedfkpinn.losses import local, pinn, point
 from pathenhancedfkpinn.losses.rsig import per_word_plugin, per_word_ustat
@@ -335,19 +335,14 @@ def build_kappa(problem, cfg, ad: ArmData, u, seed):
                                    backend=A.get("sig_backend", "auto"))  # fmt: skip
             sigma = problem.sigma()
 
-            def make(fk=fk, xk=xk, tk=tk):
-                def r(p):
-                    Yth = jax.vmap(lambda xi, ti, X, dW, s: model_payoff(u, p, xi, ti, X, dW, s, sigma))(
-                        xk, tk, fk.X, fk.dW, fk.s
-                    )
-                    if arm == "E":
-                        return (Yth / jnp.sqrt(Yth.size)).ravel()
-                    beta = jnp.mean(Yth[..., None] * fk.Phi, axis=1) / fk.norms  # plug-in
-                    return (jnp.sqrt(fk.norms / n_c) * beta).ravel()
+            def block(p, xi, ti, X, dW, s, Phi, norms):  # one point's rows; J built point by point
+                Yth = model_payoff(u, p, xi, ti, X, dW, s, sigma)  # (M_k,)
+                if arm == "E":
+                    return Yth / jnp.sqrt(n_c * Yth.shape[0])
+                beta = jnp.mean(Yth[:, None] * Phi, axis=0) / norms  # plug-in
+                return jnp.sqrt(norms / n_c) * beta
 
-                return r
-
-            out[ts] = make()
+            out[ts] = Blocks(block, (xk, tk, fk.X, fk.dW, fk.s, fk.Phi, fk.norms))
     return out
 
 
@@ -559,7 +554,7 @@ def train(cfg: dict, run_dir: str | Path, smoke: bool = False, resume: bool = Tr
     def do_kappa(step):
         rec, spectra = {"step": step, "event": "kappa"}, {}
         for ts, fn in (kappa_fns or {}).items():
-            ev = gn_spectrum(fn, params)
+            ev = gn_spectrum_blocks(fn, params) if isinstance(fn, Blocks) else gn_spectrum(fn, params)
             k, n = condition_from_spectrum(ev, cfg["kappa"].get("cutoff", 1e-8))
             rec[f"kappa_t{ts:g}"] = k
             rec[f"rank_t{ts:g}"] = n
