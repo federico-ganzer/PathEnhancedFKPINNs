@@ -24,12 +24,14 @@ TUNE_DIR=${TUNE_DIR:-results/manufactured-prelim-tune__Astar}
 CUDA_EXTRA=$(sed -n 's/^cuda_extra:[[:space:]]*\([A-Za-z0-9_]*\).*/\1/p' "$CLUSTER")
 CUDA_EXTRA=${CUDA_EXTRA:-cuda13}
 
-# Walltime per array task. Placeholders until `times` gives D4 estimates; edit them here.
-WT_TUNE=01:00:00
-WT_EXACT=03:00:00     # Astar, D, P (k = 4 and k = 16)
-WT_A0=03:00:00        # A0, k = 4 (M up to 2000)
+# Walltime per array task; edit them here. Short limits start sooner (backfill).
+# Non-B: D4 on A100 (TF32 matmuls, before full float32) estimated 2.3-3.2 min per full run.
+# B: placeholders until D4 times it.
+WT_TUNE=00:10:00      # Astar, 10k steps, no kappa or energies
+WT_EXACT=00:15:00     # Astar, D, P (k = 4 and k = 16)
+WT_A0=00:15:00        # A0, k = 4 (M up to 2000)
 WT_B=08:00:00         # B, k = 4 (M up to 2000)
-WT_A0_K16=04:00:00    # A0, k = 16
+WT_A0_K16=00:15:00    # A0, k = 16
 WT_B_K16=12:00:00     # B, k = 16 (paths 4x longer)
 
 P4=(configs/base.yaml configs/manufactured/prelim.yaml)
@@ -103,7 +105,7 @@ check)
 #SBATCH --partition=$(cl partition)
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:$(cl gpus)
-#SBATCH --time=03:00:00
+#SBATCH --time=00:45:00
 #SBATCH --output=$LOG/%x_%j.out
 #SBATCH --error=$LOG/%x_%j.err
 $(cl extra_sbatch)
@@ -136,9 +138,9 @@ if not files:
 for f in files:
     d = json.loads(f.read_text())
     peak = (d.get("peak_bytes") or 0) / 2**30
-    wt = math.ceil(1.5 * d["est_hours"])
+    wt = max(10, math.ceil(1.5 * 60 * d["est_hours"]) + 5)  # minutes; +5: start-up and compiles not in est
     print(f"{d['name']:34s} {d['ms_per_step']:8.1f} ms/step  est {d['est_hours']:6.2f} h  "
-          f"peak {peak:5.1f} GiB  walltime >= {wt:02d}:00:00")
+          f"peak {peak:5.1f} GiB  walltime >= {wt // 60:02d}:{wt % 60:02d}:00")
 EOF
   ;;
 tune)
