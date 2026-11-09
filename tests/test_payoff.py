@@ -69,6 +69,26 @@ def test_cancellation_scales_as_sqrt_dt():
     assert plugins[2] < 0.4 * plugins[1] < 0.16 * plugins[0]  # plug-in R_sig -> 0 like dt
 
 
+def test_path_chunk_same_values_and_grads():
+    """path_chunk (checkpointed chunks of paths) changes memory only, not Y^theta or its gradient."""
+    P = _paths(HEAT, 0.05, M=16)
+    params = {"w": jnp.array([1.3, -0.7], jnp.float64), "c": jnp.array(0.2, jnp.float64)}
+
+    def u(p, y, tau):
+        return jnp.tanh(p["w"][0] * y[0] + p["w"][1] * tau) + p["c"] * y[0] ** 2
+
+    def Y(p, chunk):
+        return model_payoff(u, p, X0, T0, P.X, P.dW, P.s[:-1], HEAT.sigma(), path_chunk=chunk)
+
+    np.testing.assert_allclose(Y(params, 4), Y(params, None), rtol=1e-13)
+
+    def g(chunk):
+        return jax.grad(lambda p: jnp.sum(Y(p, chunk) ** 2))(params)
+
+    for a, b in zip(jax.tree.leaves(g(4)), jax.tree.leaves(g(None))):
+        np.testing.assert_allclose(a, b, rtol=1e-12)
+
+
 # --- Horvitz-Thompson unbiasedness -------------------------------------------------------------
 
 

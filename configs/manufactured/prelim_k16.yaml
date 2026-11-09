@@ -3,3 +3,6 @@
 # 2.5e-4 (0.153). Every arm uses the same simulator. M stays 500: stored paths are 4x longer.
 problem: {k: 16}
 data: {dt: 2.5e-4}
+# Memory only (values and gradients unchanged): arm B's training step at 4000 steps needs ~82 GiB
+# unchunked (A100: 80 GB); 16-path checkpointed chunks bring it to ~18 GiB (XLA estimate).
+batch: {path_chunk: 16}
