@@ -2,7 +2,8 @@
 
 float64: path accumulators (Ito sums, time integrals), signature features, basis coefficients
 and norms, labels, per-path residuals R, Gauss-Newton spectra.
-float32: network parameters and network inputs.
+float32: network parameters and network inputs, with full-precision float32 matrix products
+(`jax_default_matmul_precision = "highest"`; the GPU default would be TF32).
 
 The package enables `jax_enable_x64` on import, so jnp defaults to float64. Always pass a dtype.
 """
