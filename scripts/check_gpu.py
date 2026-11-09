@@ -12,6 +12,7 @@ import argparse
 import io
 import sys
 from contextlib import redirect_stdout
+from pathlib import Path
 
 
 def main(argv=None) -> int:
@@ -44,8 +45,9 @@ def main(argv=None) -> int:
     text = "\n".join(lines)
     print(text)
     if a.out:
-        with open(a.out, "w", encoding="utf-8") as fh:
-            fh.write(text)
+        out = Path(a.out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(text, encoding="utf-8")
     return 0 if ok else 1
 
 
