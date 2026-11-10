@@ -124,3 +124,16 @@ def test_diag_time_recorded(tmp_path):
     assert all("diag_elapsed" in r for r in rows) and all("elapsed" in r for r in evals)
     assert 0 < final["diag_seconds"] <= final["wall_clock"]
     assert rows[-1]["diag_elapsed"] <= rows[-1]["elapsed"]
+
+
+def test_fresh_start_replaces_log(tmp_path):
+    """A run with no checkpoint to resume starts metrics.jsonl afresh (D4 reruns reuse their folder)."""
+    from pathenhancedfkpinn.config import resolve
+    from pathenhancedfkpinn.train import train
+
+    cfg = resolve(["configs/base.yaml"], TINY + ["arm=Astar", "log.every=1", "kappa.steps=[]"])
+    for _ in range(2):
+        train(cfg, tmp_path, smoke=True, resume=False)
+    lines = [json.loads(ln) for ln in (tmp_path / "metrics.jsonl").read_text().splitlines()]
+    assert [r["step"] for r in lines if "loss" in r] == [0, 1, 2]
+    assert sum(r.get("event") == "setup" for r in lines) == 1

@@ -422,8 +422,11 @@ def _floatify(d: dict) -> dict:
 
 class JsonlLog:
     def __init__(self, path: Path, resume_step: int | None):
+        """resume_step None: fresh start, any earlier log is discarded. Else keep lines up to resume_step."""
         self.path = path
-        if resume_step is not None and path.exists():  # drop lines logged after the checkpoint
+        if resume_step is None:
+            path.write_text("", encoding="utf-8")
+        elif path.exists():  # drop lines logged after the checkpoint
             keep = [ln for ln in path.read_text().splitlines() if ln and json.loads(ln).get("step", -1) <= resume_step]
             path.write_text("".join(ln + "\n" for ln in keep))
         self.fh = open(path, "a", encoding="utf-8")
