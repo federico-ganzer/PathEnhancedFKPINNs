@@ -89,20 +89,21 @@ def euler_scan(
 ):
     """Euler-Maruyama over the grid `s_grid` (n+1,) from x0 (d,), n_paths paths.
 
-    drift(X, s): X (M, d) -> (M, d). Returns (X_T (M, d), acc, emitted or None)."""
+    drift(X, s): X (M, d) -> (M, d). Returns (X_T (M, d), acc, emitted or None).
+
+    The paths are the first n_paths of the block stream (the last block may be partly used), so
+    fewer paths are a prefix of more paths under the same key."""
     d = x0.shape[-1]
     dtype = s_grid.dtype
     block = block or n_paths
-    if n_paths % block:
-        raise ValueError(f"n_paths={n_paths} must be a multiple of block={block}")
-    n_blocks = n_paths // block
+    n_blocks = -(-n_paths // block)
     X0 = jnp.broadcast_to(jnp.asarray(x0, dtype), (n_paths, d))
     n = s_grid.shape[0] - 1
 
     def step(carry, k):
         X, acc = carry
         s, ds = s_grid[k], s_grid[k + 1] - s_grid[k]
-        dW = brownian_step(key, k, n_blocks, block, d, ds, dtype)
+        dW = brownian_step(key, k, n_blocks, block, d, ds, dtype)[:n_paths]
         out = emit(X, s, ds, dW) if emit is not None else None
         if accumulate is not None:
             acc = accumulate(acc, X, s, ds, dW)
