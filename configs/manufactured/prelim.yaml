@@ -8,5 +8,6 @@
 problem: {name: manufactured, d: 1, nu: 0.05, k: 4, eps: 0.1, T: 1.0, variant: static_source}
 arm_opts: {N: 2, N0: 2, estimator: ustat, J: null}   # J null = full Euler sums (D0 passes; HT fails on heat)
 data: {M: 500, dt: 1.0e-3, mesh: uniform}
-# Loss weights: placeholder. Replace with the pick of the Astar tuning grid (step 1), then freeze.
-weights: {res: 1.0, bc: 1.0, data: 1.0}
+# Loss weights: frozen. Pick of the Astar tuning grid (data, bc in {1, 10, 100}, 10k steps, seed 0):
+# smallest rel_l2_T, 3.03e-3 at data 10, bc 10.
+weights: {res: 1.0, bc: 10.0, data: 10.0}
