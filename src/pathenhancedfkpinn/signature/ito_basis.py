@@ -34,7 +34,7 @@ def strip0(w: Word) -> Word:
 
 @lru_cache(maxsize=None)
 def qshuffle(u: Word, v: Word) -> dict[Word, int]:
-    """Expansion of S^u * S^v as {word: integer coefficient} (Ito quasi-shuffle)."""
+    """Expansion of S^u * S^v as {word: integer coefficient} (Ito quasi-shuffle recursion)."""
     if not u:
         return {v: 1}
     if not v:
@@ -45,7 +45,7 @@ def qshuffle(u: Word, v: Word) -> dict[Word, int]:
         out[w + (b,)] = out.get(w + (b,), 0) + c
     for w, c in qshuffle(u[:-1], v).items():
         out[w + (a,)] = out.get(w + (a,), 0) + c
-    if a == b and a != 0:
+    if a == b and a != 0: # Ito correction
         for w, c in qshuffle(u[:-1], v[:-1]).items():
             out[w + (0,)] = out.get(w + (0,), 0) + c
     return out
@@ -74,8 +74,7 @@ def orthogonal_basis(words) -> dict[Word, dict[Word, Fraction]]:
             p = {w: Fraction(1)}
             for q in done:
                 num = sum(cq * E_prod(w, b) for b, cq in basis[q].items())
-                den = sum(
-                    c1 * c2 * E_prod(a, b) for a, c1 in basis[q].items() for b, c2 in basis[q].items()
+                den = sum(c1 * c2 * E_prod(a, b) for a, c1 in basis[q].items() for b, c2 in basis[q].items()
                 )
                 for b, cq in basis[q].items():
                     p[b] = p.get(b, Fraction(0)) - num / den * cq

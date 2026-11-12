@@ -8,7 +8,8 @@ notebooks/00_sanity.ipynb
 notebooks/01_paper_benchmarks.ipynb
 notes/
 scripts/presentation_figures.py
-
+figures/prelim/
+scripts/prelim_figures.py
 # Agents
 .claude
 
