@@ -5,8 +5,9 @@
 Arms: P, Astar, A0, B (B_0 is B with N = 0), Boff, C, D, Dprime, E.
 Not implemented yet: Pplus, Phc, A0-bc, E with HT nodes, E_h (Stage 2 / rehearsal).
 
-Run directory contents: config.yaml, metrics.jsonl, final.json, env.json, ckpt/, and kappa/
-(Gauss-Newton spectra, one step<k>.npz per kappa checkpoint, one array per time slice).
+Run directory contents: config.yaml, metrics.jsonl, final.json, env.json, ckpt/, kappa/
+(Gauss-Newton spectra, one step<k>.npz per kappa checkpoint, one array per time slice), and
+snapshots/ when the config has `snapshots` (network output on a grid, see build_snapshots).
 Label errors against the exact solution (metrics.label_quality) go in the setup record of
 metrics.jsonl and in final.json["labels"]. Time spent in eval, energies and kappa is counted in
 `elapsed` and separately in `diag_elapsed` (final.json: diag_seconds), so training-only wall-clock
@@ -380,6 +381,48 @@ def build_energies(problem, cfg, pts, u, seed):
     return energy_fn, meta
 
 
+def build_snapshots(problem, cfg, u, run_dir: Path):
+    """Network output on a fixed grid at chosen training steps. Off unless cfg has `snapshots`.
+
+        snapshots: {steps: [0, 1000, ..., final], n_x: 513, t: [0.25, 0.5, 1.0], N: 2}
+
+    The snapshot at step s is taken before update s (s updates done), so step 0 is the initial
+    network, which all arms of a seed share; "final" is taken after the last update and saved as
+    step<optim.steps>. n_x uniform points over the spatial box (d = 1 only), t as fractions of T,
+    x-derivatives of orders 0..N. Writes snapshots/grid.npz (x, t, exact_d<n> when the problem has
+    an exact solution) at setup and snapshots/step<s>.npz with d<n> arrays of shape (len(t), n_x).
+    Returns (steps, final, save(params, step)), or (set(), False, None) when off."""
+    S = cfg.get("snapshots") or {}
+    raw = list(S.get("steps") or [])
+    if not raw:
+        return set(), False, None
+    if problem.d != 1:
+        raise ValueError(f"snapshots support d = 1 only (got d = {problem.d})")
+    final = "final" in raw
+    steps = {int(s) for s in raw if s != "final"}
+    N = int(S.get("N", 2))
+    lo, hi = problem.lo_hi()
+    x = jnp.linspace(lo[0], hi[0], int(S.get("n_x", 513)), dtype=jnp.float64)
+    t = jnp.asarray(S.get("t", [1.0]), jnp.float64) * problem.T
+    X, Tm = jnp.tile(x, t.shape[0])[:, None], jnp.repeat(t, x.shape[0])
+    shape = (t.shape[0], x.shape[0])
+    out_dir = run_dir / "snapshots"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    grid = {"x": np.asarray(x), "t": np.asarray(t)}
+    if problem.has_exact():
+        ex = local.exact_derivs(problem, X, Tm, N)
+        grid.update({f"exact_d{n}": np.asarray(e, dtype=np.float64).reshape(shape) for n, e in enumerate(ex)})
+    np.savez(out_dir / "grid.npz", **grid)
+    fn = eqx.filter_jit(lambda p: local.net_derivs(u, p, X, Tm, N))
+
+    def save(params, step: int):
+        d = fn(params)
+        np.savez(out_dir / f"step{step}.npz", **{f"d{n}": np.asarray(v, dtype=np.float64).reshape(shape)
+                                                 for n, v in enumerate(d)})  # fmt: skip
+
+    return steps, final, save
+
+
 # ------------------------------------------------------------------------------------------------
 # run bookkeeping
 # ------------------------------------------------------------------------------------------------
@@ -482,6 +525,7 @@ def train(cfg: dict, run_dir: str | Path, smoke: bool = False, resume: bool = Tr
     data = {"pts": pts, "arm": ad.arrays}
     kappa_fns = build_kappa(problem, cfg, ad, u, seed)
     energy_fn, energy_meta = build_energies(problem, cfg, pts, u, seed)
+    snap_steps, snap_final, snap_save = build_snapshots(problem, cfg, u, run_dir)
     setup_seconds = time.time() - t_setup
 
     Dc = cfg["data"]
@@ -570,6 +614,8 @@ def train(cfg: dict, run_dir: str | Path, smoke: bool = False, resume: bool = Tr
     for step in range(start, steps):
         if kappa_fns and step in kappa_steps:
             timed(do_kappa, step)
+        if snap_save is not None and step in snap_steps:
+            timed(snap_save, params, step)
         params, opt_state, loss, logs = step_fn(params, opt_state, jnp.asarray(step, jnp.int32), data)
         if step % log_every == 0 or step == steps - 1:
             lv = float(loss)
@@ -595,6 +641,8 @@ def train(cfg: dict, run_dir: str | Path, smoke: bool = False, resume: bool = Tr
             meta_path.write_text(json.dumps({"step": step, "elapsed": time.time() - t0, "diag_elapsed": diag["s"]}))
         if status == "halted":
             break
+    if snap_save is not None and snap_final and status == "done":
+        timed(snap_save, params, steps)
     final = {"status": status, "reason": reason, "steps_done": step + 1, "steps_total": steps,
              "wall_clock": time.time() - t0, "diag_seconds": diag["s"], "setup_seconds": setup_seconds, "smoke": smoke,
              "config_hash": config_hash(cfg), **_floatify(eval_fn(params)),

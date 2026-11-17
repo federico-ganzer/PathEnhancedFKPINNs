@@ -1,0 +1,12 @@
+# Layer on top of base.yaml + manufactured/prelim.yaml (k = 4): the main prelim runs of P, Astar
+# and D, plus network snapshots. Snapshots only read the parameters, so training is the same as
+# in the main runs (tests/test_snapshots.py).
+#   steps: dense before 1000 (where the arms separate most at k = 4), then every 250 to 3000,
+#   every 500 to 10000, and the final network. Grid: 513 x points at t = T/4, T/2, T; orders 0-2.
+snapshots:
+  steps: [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1250, 1500, 1750, 2000, 2250, 2500,
+          2750, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500,
+          10000, final]
+  n_x: 513
+  t: [0.25, 0.5, 1.0]
+  N: 2

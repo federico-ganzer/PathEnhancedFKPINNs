@@ -7,6 +7,10 @@
 #   bash slurm/prelim.sh tune             Astar loss-weight grid: 9 runs, 10k steps, seed 0
 #   bash slurm/prelim.sh pick             tuning table and the weights line for configs/manufactured/prelim.yaml
 #   bash slurm/prelim.sh main             100 runs; refuses until prelim.yaml holds the picked weights
+#   bash slurm/prelim.sh m125             resubmit the M = 125 runs (A0; B N = 0, 2) that failed on the
+#                                         old path-block check: 15 runs
+#   bash slurm/prelim.sh ablate16         diagnostics for D at k = 16: 50 runs (see the phase below)
+#   bash slurm/prelim.sh snap             P, Astar, D at k = 4 with network snapshots: 15 runs
 #   bash slurm/prelim.sh <phase> --dry-run   write the sbatch files without submitting
 #
 # Runs (5 seeds each; layers configs/base.yaml + configs/manufactured/prelim.yaml):
@@ -33,6 +37,12 @@ WT_A0=00:15:00        # A0, k = 4 (M up to 2000)
 WT_B=01:57:00         # B, k = 4 (M up to 2000)
 WT_A0_K16=00:15:00    # A0, k = 16
 WT_B_K16=08:20:00     # B, k = 16 (paths 4x longer)
+WT_LONG=00:40:00      # Astar, D at k = 16 with 3x the steps (90k)
+
+# ablate16, Dprime family tpow (w_n = lambda_n t^n; Parseval here = lambdas [1, 0.1, 0.005]).
+# [SIGN-OFF] provisional scan, edit before submitting:
+DPRIME_L2=(0.0005 0.00005 0.000005 0.0000005)   # level-2 lambda at Parseval level 1 (N = 2)
+DPRIME_L1=(0.01 0.001)                          # level-1 lambda without level 2 (N = 1)
 
 P4=(configs/base.yaml configs/manufactured/prelim.yaml)
 P16=(configs/base.yaml configs/manufactured/prelim.yaml configs/manufactured/prelim_k16.yaml)
@@ -165,8 +175,40 @@ main)
   submit "$WT_EXACT" "${P16[@]}" --set arm=D arm_opts.N=2 "${SEEDS[@]}"
   submit "$WT_EXACT" "${P16[@]}" --set arm=P "${SEEDS[@]}"
   ;;
+m125)
+  # Same specs as in main, so the runs land in the M125 folders of main (slugs M125, N0_M125, N2_M125).
+  # Delete stale error.txt files first: rm results/manufactured-prelim__A0/M125/seed*/error.txt
+  submit "$WT_A0" "${P4[@]}" --set arm=A0 --grid data.M=125 "${SEEDS[@]}"
+  submit "$WT_B" "${P4[@]}" --set arm=B --grid arm_opts.N=0,2 data.M=125 "${SEEDS[@]}"
+  ;;
+ablate16)
+  # Diagnostics for D at k = 16, all on the k = 16 layers. Steps and lr change for these runs only,
+  # so they say whether D is slow or stuck; they are not arm comparisons.
+  # 1. Level 2 removed: D with N = 1                                  -> manufactured-prelim_k16__D/N1
+  submit "$WT_EXACT" "${P16[@]}" --set arm=D --grid arm_opts.N=1 "${SEEDS[@]}"
+  # 2. Slow or stuck: 3x the steps (same lr endpoints), with Astar alongside -> .../steps90000;
+  #    and the schedule scaled by 0.1                                 -> .../D/lr0.0001_lr_final1e-07
+  submit "$WT_LONG" "${P16[@]}" --set arm=D arm_opts.N=2 --grid optim.steps=90000 "${SEEDS[@]}"
+  submit "$WT_LONG" "${P16[@]}" --set arm=Astar --grid optim.steps=90000 "${SEEDS[@]}"
+  submit "$WT_EXACT" "${P16[@]}" --set arm=D arm_opts.N=2 --grid optim.lr=1e-4 optim.lr_final=1e-7 "${SEEDS[@]}"
+  # 3. Dprime weight scan (DPRIME_L2, DPRIME_L1 above)       -> manufactured-prelim_k16-tpow_l<n>_<lambda>__Dprime
+  for l2 in "${DPRIME_L2[@]}"; do
+    submit "$WT_EXACT" "${P16[@]}" --set arm=Dprime arm_opts.N=2 arm_opts.family=tpow \
+      "arm_opts.lambdas=[1.0,0.1,$l2]" "${SEEDS[@]}" --name "manufactured-prelim_k16-tpow_l2_${l2}__Dprime"
+  done
+  for l1 in "${DPRIME_L1[@]}"; do
+    submit "$WT_EXACT" "${P16[@]}" --set arm=Dprime arm_opts.N=1 arm_opts.family=tpow \
+      "arm_opts.lambdas=[1.0,$l1]" "${SEEDS[@]}" --name "manufactured-prelim_k16-tpow_l1_${l1}__Dprime"
+  done
+  ;;
+snap)
+  # Main k = 4 specs plus snapshots (configs/manufactured/prelim_snap.yaml) -> manufactured-prelim_snap__<arm>
+  for arm in P Astar D; do
+    submit "$WT_EXACT" "${P4[@]}" configs/manufactured/prelim_snap.yaml --set arm=$arm "${SEEDS[@]}"
+  done
+  ;;
 *)
-  sed -n '2,10p' "$0"
+  sed -n '2,14p' "$0"
   exit 1
   ;;
 esac
